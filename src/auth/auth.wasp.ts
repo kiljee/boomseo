@@ -25,6 +25,8 @@ import {
   getGoogleUserFields,
 } from "./userSignupFields" with { type: "ref" };
 
+import { onAfterSignup } from "./hooks/onAfterSignup" with { type: "ref" };
+
 const emailAuthMethod: NonNullable<AuthMethods["email"]> = {
   fromField: {
     name: "Open SaaS App",
@@ -81,6 +83,7 @@ export const authConfig: Auth = {
   },
   onAuthFailedRedirectTo: "/login",
   onAuthSucceededRedirectTo: "/demo-app",
+  onAfterSignup: onAfterSignup
 };
 
 export const authSpec: Spec = [

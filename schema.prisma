@@ -26,6 +26,11 @@ model User {
   contactFormMessages       ContactFormMessage[]
   tasks                     Task[]
   files                     File[]
+
+  memberships Membership[]
+
+  activeOrganizationId      String?
+  activeOrganization        Organization? @relation("ActiveOrganization", fields: [activeOrganizationId], references: [id])
 }
 
 model Organization {
@@ -36,7 +41,9 @@ model Organization {
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 
-  members                   Membership[]
+  memberships               Membership[]
+
+  activeUsers               User[]  @relation("ActiveOrganization")
 }
 
 enum Role {
