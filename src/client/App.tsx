@@ -7,8 +7,11 @@ import { NavBar } from "./components/NavBar/NavBar";
 import {
   demoNavigationitems,
   marketingNavigationItems,
+  defaultNavigationItems
 } from "./components/NavBar/constants";
 import { CookieConsentBanner } from "./components/cookie-consent/Banner";
+import { Organization } from "openai/resources/admin/organization/organization.mjs";
+import { useAuth } from 'wasp/client/auth';
 
 /**
  * use this component to wrap all child components
@@ -23,9 +26,16 @@ export function App() {
     );
   }, [location]);
 
-  const navigationItems = isMarketingPage
+  const { data: user } = useAuth();
+
+
+  const navigationItems = 
+  isMarketingPage 
+  ? (user ? [...marketingNavigationItems, ...defaultNavigationItems] : marketingNavigationItems)
+  : defaultNavigationItems;
+  /*isMarketingPage
     ? marketingNavigationItems
-    : demoNavigationitems;
+    : demoNavigationitems;*/
 
   const shouldDisplayAppNavBar = useMemo(() => {
     return (

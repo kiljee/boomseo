@@ -10,9 +10,17 @@ import {
   DropdownMenuTrigger,
 } from "../client/components/ui/dropdown-menu";
 import { userMenuItems } from "./constants";
+import { useNavigate } from "react-router"
+import { routes } from "wasp/client/router"
 
 export function UserDropdown({ user }: { user: Partial<UserEntity> }) {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate(routes.LandingPageRoute.to);
+  }
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -48,7 +56,7 @@ export function UserDropdown({ user }: { user: Partial<UserEntity> }) {
         <DropdownMenuItem>
           <button
             type="button"
-            onClick={() => logout()}
+            onClick={() => handleLogout()}
             className="flex w-full items-center gap-3"
           >
             <LogOut size="1.1rem" />

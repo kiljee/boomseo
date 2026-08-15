@@ -11,7 +11,7 @@ function slugify(name: string) {
         .replace(/[^a-z0-9-]/g, '')
 }
 
-export async function createInitialOrganization(prisma : PrismaClient, userId: string) {
+/*export async function createInitialOrganization(prisma : PrismaClient, userId: string) {
     const user = await prisma.user.findUnique({
         where: { id: userId }
     });
@@ -55,7 +55,7 @@ export async function createInitialOrganization(prisma : PrismaClient, userId: s
     
 
     return organization;
-}
+}*/
 
 export async function getCurrentOrganization(prisma : PrismaClient, userId: string) {
     const user = await prisma.user.findUnique({

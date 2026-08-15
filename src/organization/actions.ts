@@ -1,5 +1,6 @@
 import { HttpError } from "wasp/server";
 import { Role } from "@prisma/client";
+import { createInvitation } from "./helpers";
 
 export const inviteUser = async (
     args: {
@@ -8,64 +9,15 @@ export const inviteUser = async (
     },
     context: any
 ) => {
-    if(!context.user) {
-        throw new HttpError(401);
-    }
 
-    const orgId = context.user.activeOrganizationId;
-
-    if(!orgId) {
-        throw new HttpError(400, "No active organization");
-    }
-
-    const requester = await context.entities.Membership.findUnique({
-        where: {
-            userId_orgId: {
-                userId: context.user.id,
-                orgId
-            }
-        }
-    });
-
-    if(
-        !requester || (requester.role !== "OWNER" && requester.role !== "ADMIN")
-    ) {
-       throw new HttpError(403, "Not allowed");
-    }
-
-    const user = await context.entities.User.findUnique({
-        where: {
-            email: args.email
-        }
-    });
-
-    if(!user) {
-        throw new HttpError(404, "User not found");
-    }
-
-    const existing = await context.entities.Membership.findUnique({
-        where: {
-            userId_orgId: {
-                userID: user.id,
-                orgId
-            }
-        }
-    });
-
-    if(existing) {
-        throw new HttpError(400, "User already belongs to organization");
-    }
-
-    return context.entities.Membership.create({
-        data: {
-            userId: user.id,
-            orgId,
-            role: args.role
-        }
-    })
-
-
-
+    return await createInvitation({
+        email: args.email,
+        role: args.role,
+        activeOrganizationId: context.user.activeOrganizationId,
+        token: crypto.randomUUID(),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        accepted: false,
+    }, context);
 }
 
 export const changeMemberRole = async(
@@ -202,4 +154,289 @@ export const setActiveOrganization = async (
         }
 
     })
+}
+
+export const createOrganization = async (
+    args: {
+        name : string;
+        slug?: string;
+        icon?: string;
+        description?: string;
+        websiteUrl: string;
+        industry: string;
+        country: string;
+        language: string;
+        invites?: {
+            email: string;
+            role: "ADMIN" | "MEMBER" | "OWNER";
+        }[];
+    },
+    context: any
+) => {
+    if(!context.user) {
+        throw new HttpError(401);
+    }
+
+    /*const existingMembership = await context.entities.Membership.findFirst({
+        where: {
+            userId: context.user.id
+        }
+    });
+
+    if(existingMembership) {
+        throw new HttpError(400, "User already belongs to a workspace");
+    }*/
+
+    const baseSlug = args.name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g,"");
+
+    const slug = `${baseSlug}-${Date.now()}`;
+
+    const organization = await context.entities.Organization.create({
+        data: {
+            name: args.name,
+            slug,
+            icon: args.icon || "🔎",
+            description: args.description || null
+        }
+    });
+
+    await context.entities.Membership.create({
+        data: {
+            userId: context.user.id,
+            orgId: organization.id,
+            role: "OWNER"
+        }
+    });
+
+    for(const invite of args.invites ?? []) {
+        await createInvitation({
+            email: invite.email,
+            role: invite.role,
+            activeOrganizationId: organization.id,
+            token: crypto.randomUUID(),
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            accepted: false,
+        }, context);
+
+    }
+
+    await context.entities.User.update({
+        where: {
+            id: context.user.id
+        },
+        data: {
+            activeOrganizationId: organization.id
+        }
+    });
+
+    return organization;
+}
+
+export const acceptInvitation = async (
+    args: {
+        invitationId : String
+    },
+    context: any
+) => {
+    const invitation =
+        await context.entities.OrganizationInvitation.findUnique({
+            where: {
+                id: args.invitationId
+            }
+        });
+
+    if(!invitation) {
+        throw new HttpError(404);
+    }
+
+    if(
+        invitation.email !== context.user.email
+    ) {
+        throw new HttpError(403);
+    }
+
+    await context.entities.Membership.create({
+        data: {
+            userId: context.user.id,
+            orgId: invitation.activeOrganizationId,
+            role: invitation.role
+        }
+    });
+
+    await context.entities.User.update({
+        where: {
+            id: context.user.id
+        },
+        data: {
+            activeOrganizationId:
+                invitation.activeOrganizationId
+        }
+    });
+
+    await context.entities.OrganizationInvitation.update({
+        where: {
+            id: invitation.id
+        },
+        data: {
+            acceptedAt: new Date(Date.now()),
+            accepted : true
+        }
+    });
+
+}
+
+export const cancelInvitation = async (
+  args: {
+    invitationId: string;
+  },
+  context: any
+) => {
+  if (!context.user) {
+    throw new HttpError(401);
+  }
+
+  const invitation =
+    await context.entities.OrganizationInvitation.findUnique({
+      where: {
+        id: args.invitationId,
+      },
+    });
+
+  if (!invitation) {
+    throw new HttpError(404, "Invitation not found");
+  }
+
+  const membership =
+    await context.entities.Membership.findUnique({
+      where: {
+        userId_orgId: {
+          userId: context.user.id,
+          orgId: invitation.activeOrganizationId,
+        },
+      },
+    });
+
+  if (!membership) {
+    throw new HttpError(403);
+  }
+
+  if (
+    membership.role !== "OWNER" &&
+    membership.role !== "ADMIN"
+  ) {
+    throw new HttpError(403);
+  }
+
+    await context.entities.OrganizationInvitation.update({
+        where: {
+            id: invitation.id
+        },
+        data: {
+            acceptedAt: new Date(Date.now()),
+            accepted : false
+        }
+    });
+
+  return {
+    success: true,
+  };
+};
+
+export const leaveOrganization = async (
+    _args: {},
+    context: any
+) => {
+    if(!context.user) {
+        throw new HttpError(401, "Not authenticated");
+    }
+
+    const user = await context.entities.User.findUnique({
+        where: {
+            id: context.user.id,
+        }
+    });
+
+    if(!user?.activeOrganizationId) {
+        throw new HttpError(
+            400,
+            "No active workspace selected"
+        );
+    }
+
+    const orgId = user.activeOrganizationId;
+
+    const membership = await context.entities.Membership.findFirst({
+        where: {
+            userId: context.user.id,
+            orgId,
+        },
+    });
+
+    if(!membership) {
+        throw new HttpError(
+            400,
+            "You are not a member of this workspace"
+        );
+    }
+
+    await context.entities.Membership.delete({
+        where: {
+            id: membership.id,
+        },
+    });
+
+    await context.entities.User.update({
+        where: {
+            id: context.user.id,
+        },
+        data: {
+            activeOrganizationId: null
+        },
+    });
+
+
+    return {
+        success: true
+    };
+}
+
+export const deleteInvitation = async (
+    args: { invitationId: string },
+    context: any
+) => {
+    if(!context.user) {
+        throw new HttpError(401, "Not authenticated");
+    }
+
+    const user = await context.entities.User.findUnique({
+        where: {
+            id: context.user.id,
+        }
+    });
+
+    if(!user.activeOrganizationId) {
+        throw new HttpError(400, "No workspace selected");
+    }
+
+    const invitation = await context.entities.OrganizationInvitation.findFirst({
+        where: {
+            id: args.invitationId,
+            activeOrganizationId: user.activeOrganizationId
+        },
+    });
+
+    if(!invitation) {
+        throw new HttpError(404, "Invitation not found");
+    }
+
+    await context.entities.OrganizationInvitation.delete({
+        where: {
+            id: invitation.id
+        }
+    })
+    return { success: true };
+
 }

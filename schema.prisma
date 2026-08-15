@@ -38,12 +38,25 @@ model Organization {
   name                      String
   slug                      String @unique
 
+  icon                      String?
+  description               String?
+
+
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
+
+  websiteUrl                String @default("example.com")
+  industry                  String @default("Other")
+  country                   String @default("United States")
+  language                  String @default("English")
+
+  onboardingStep     Int     @default(1)
+  onboardingComplete Boolean @default(false)
 
   memberships               Membership[]
 
   activeUsers               User[]  @relation("ActiveOrganization")
+  invitations               OrganizationInvitation[]
 }
 
 enum Role {
@@ -64,6 +77,23 @@ model Membership {
   organization Organization @relation(fields: [orgId], references: [id])
 
   @@unique([userId, orgId])
+}
+
+model OrganizationInvitation {
+  id                        String @id @default(uuid())
+  email                     String
+  activeOrganizationId      String
+
+  role                      Role @default(MEMBER)
+
+  token                     String @unique
+
+  expiresAt                 DateTime
+
+  acceptedAt                DateTime?
+  accepted                  Boolean
+
+  organization              Organization @relation(fields: [activeOrganizationId], references: [id])
 }
 
 model GptResponse {

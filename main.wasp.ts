@@ -16,6 +16,13 @@ import { paymentSpec } from "./src/payment/payment.wasp";
 import { emailSender } from "./src/server/emailSender.wasp";
 import { userSpec } from "./src/user/user.wasp";
 import { organizationSpec } from "./src/organization/organization.wasp";
+import { DashboardPage } from "./src/seo/dashboard/DashboardPage" with { type : "ref" }
+import { CreateOrganizationPage } from "./src/organization/components/CreateOrganizationPage" with { type : "ref" }
+import { WelcomePage } from "./src/onboarding/WelcomePage" with { type : "ref" }
+import { MembersPage } from "./src/organization/components/MembersPage" with { type : "ref"}
+import { WorkspacesPage } from "./src/organization/components/WorkspacesPage" with { type : "ref"}
+import { InvitationsPage } from "./src/organization/components/InvitationsPage" with { type : "ref"}
+import { OnboardingPage } from "./src/onboarding/OnboardingPage.tsx" with { type : "ref" }
 
 export default app({
   name: "OpenSaaS",
@@ -42,6 +49,34 @@ export default app({
     // improving SEO, search engine/AI crawling, and performance: https://wasp.sh/docs/advanced/prerendering
     route("LandingPageRoute", "/", page(LandingPage), { prerender: true }),
     route("NotFoundRoute", "*", page(NotFoundPage)),
+    route("DashboardRoute",
+      "/dashboard",
+      page(DashboardPage, {authRequired: true})
+    ),
+    route("CreateOrganizationRoute",
+      "/create-workspace",
+      page(CreateOrganizationPage, {authRequired: true})
+    ),
+    route("WorkspacesRoute",
+      "/workspaces",
+      page(WorkspacesPage, {authRequired: true})
+    ),
+    route("InvitationsRoute",
+      "/invitations",
+      page(InvitationsPage, {authRequired: true})
+    ),
+    route("WelcomePage",
+      "/welcome-page",
+      page(WelcomePage, {authRequired: true})
+    ),
+    route("MembersRoute",
+      "/members-page",
+      page(MembersPage, {authRequired: true})
+    ),
+    route("OnboardingRoute",
+      "/onboarding",
+      page(OnboardingPage, {authRequired: true})
+    ),
     authSpec,
     userSpec,
     demoAiAppSpec,

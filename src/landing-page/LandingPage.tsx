@@ -13,8 +13,25 @@ import {
   testimonials,
 } from "./contentSections";
 import { AIReady } from "./ExampleHighlightedFeature";
+import { useAuth } from "wasp/client/auth";
+import { useNavigate } from "react-router";
+import { useEffect } from 'react'
+import { routes } from "wasp/client/router";
 
 export function LandingPage() {
+  const { data: user, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if(user) {
+      //navigate(routes.WorkspacesRoute.to);
+    }
+  }, [user]);
+
+
+  if(isLoading)
+    return null;
+
   return (
     <div className="bg-background text-foreground">
       <SchemaMarkup />
