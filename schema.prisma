@@ -57,6 +57,8 @@ model Organization {
 
   activeUsers               User[]  @relation("ActiveOrganization")
   invitations               OrganizationInvitation[]
+
+  analyses SEOAnalysis[]
 }
 
 enum Role {
@@ -95,6 +97,72 @@ model OrganizationInvitation {
 
   organization              Organization @relation(fields: [activeOrganizationId], references: [id])
 }
+
+model SEOAnalysis {
+  id              String   @id @default(uuid())
+  organizationId  String
+
+  status          String
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+
+  seoScore        Int?
+  pagesCrawled    Int      @default(0)
+
+  organization    Organization @relation(
+    fields: [organizationId],
+    references: [id]
+  )
+
+  pages  SEOPage[]
+  issues SEOIssue[]
+
+  @@index([organizationId])
+}
+
+model SEOPage {
+  id              String   @id @default(uuid())
+  analysisId      String
+
+  url             String
+  statusCode      Int?
+  title           String?
+  metaDescription String?
+  wordCount       Int?
+  responseTime    Float?
+  size            Int?
+  internalLinks   Int?
+
+  analysis        SEOAnalysis @relation(
+    fields: [analysisId],
+    references: [id]
+  )
+
+  @@index([analysisId])
+  @@index([url])
+}
+
+model SEOIssue {
+  id         String   @id @default(uuid())
+  analysisId String
+
+  pageUrl    String?
+  type       String
+  severity   String?
+  message    String
+
+  details    Json?
+
+  analysis SEOAnalysis @relation(
+    fields: [analysisId],
+    references: [id]
+  )
+
+  @@index([analysisId])
+  @@index([pageUrl])
+}
+
+
 
 model GptResponse {
   id                        String          @id @default(uuid())
