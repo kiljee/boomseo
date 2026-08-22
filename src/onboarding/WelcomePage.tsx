@@ -3,6 +3,7 @@ import { useQuery } from "wasp/client/operations";
 import { getOnboardingStatus } from "wasp/client/operations";
 import { routes } from "wasp/client/router";
 import { useNavigate } from "react-router";
+import { Props } from "./types"
 
 export function WelcomePage() {
   const navigate = useNavigate();

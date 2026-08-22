@@ -16,6 +16,7 @@ import { paymentSpec } from "./src/payment/payment.wasp";
 import { emailSender } from "./src/server/emailSender.wasp";
 import { userSpec } from "./src/user/user.wasp";
 import { organizationSpec } from "./src/organization/organization.wasp";
+import { analysisSpec } from "./src/server/seo/analysis.wasp";
 import { DashboardPage } from "./src/seo/dashboard/DashboardPage" with { type : "ref" }
 import { CreateOrganizationPage } from "./src/organization/components/CreateOrganizationPage" with { type : "ref" }
 import { WelcomePage } from "./src/onboarding/WelcomePage" with { type : "ref" }
@@ -23,6 +24,8 @@ import { MembersPage } from "./src/organization/components/MembersPage" with { t
 import { WorkspacesPage } from "./src/organization/components/WorkspacesPage" with { type : "ref"}
 import { InvitationsPage } from "./src/organization/components/InvitationsPage" with { type : "ref"}
 import { OnboardingPage } from "./src/onboarding/OnboardingPage.tsx" with { type : "ref" }
+import { AnalysisTestPage } from "./src/onboarding/AnalysisTestPage.tsx" with { type : "ref" }
+import { SEOAuditPage } from "./src/seo/audit/SEOAuditPage.tsx" with { type: "ref" }
 
 export default app({
   name: "OpenSaaS",
@@ -77,6 +80,14 @@ export default app({
       "/onboarding",
       page(OnboardingPage, {authRequired: true})
     ),
+    route("AnalysisRoute",
+      "/analysis-test",
+      page(AnalysisTestPage, {authRequired: true})
+    ),
+    route("AuditRoute",
+      "/audit",
+      page(SEOAuditPage, {authRequired: true})
+    ),
     authSpec,
     userSpec,
     demoAiAppSpec,
@@ -84,6 +95,7 @@ export default app({
     fileUploadSpec,
     analyticsSpec,
     adminSpec,
-    organizationSpec
+    organizationSpec,
+    analysisSpec
   ],
 });

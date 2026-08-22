@@ -3,6 +3,9 @@ import { useNavigate } from "react-router";
 import { useAction } from "wasp/client/operations";
 import { createOrganization } from "wasp/client/operations";
 import { routes } from "wasp/client/router";
+import { Props } from "../../onboarding/types"
+
+
 
 type TeamRole = "ADMIN" | "MEMBER";
 
@@ -58,7 +61,10 @@ const LANGUAGES = [
   "Serbian"
 ];
 
-export function CreateOrganizationPage() {
+export function CreateOrganizationPage({
+  onContinue,
+  onBack
+}: Props) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [icon, setIcon] = useState("🔎");

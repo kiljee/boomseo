@@ -1,24 +1,31 @@
-import {
-  Activity,
-  AlertTriangle,
-  ArrowUpRight,
-  BarChart3,
-  CheckCircle2,
-  ChevronRight,
-  FileSearch,
-  Globe,
-  Plus,
-  Search,
-  TrendingUp,
-} from "lucide-react";
-
+import { useEffect, useState } from "react";
 import { Link, routes } from "wasp/client/router";
-import { useQuery, useAction } from "wasp/client/operations";
+import { useAction, useQuery } from "wasp/client/operations";
 import {
   getCurrentOrganization,
   leaveOrganization,
+  startSEOAnalysis,
+  getSEOAnalysisStatus,
+  syncSEOAnalysis,
+  getLatestSEOAudit
 } from "wasp/client/operations";
 import { useNavigate } from "react-router";
+
+import { SEOHealthCard } from "./components/SEOHealthCard";
+import { SEOAuditCard } from "./components/SEOAuditCard";
+import { PerformanceCard } from "./components/PerformanceCard";
+import { KeywordsCard } from "./components/KeywordsCard";
+import { RecentAuditsCard } from "./components/RecentAuditsCard";
+import { QuickActions } from "./components/QuickActions";
+import { MetricCard } from "./components/MetricCard";
+
+import {
+  Activity,
+  BarChart3,
+  Globe,
+  Search,
+  TrendingUp,
+} from "lucide-react";
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -26,7 +33,98 @@ export function DashboardPage() {
   const { data: organization, isLoading } =
     useQuery(getCurrentOrganization);
 
+  const startAnalysis = useAction(startSEOAnalysis);
   const leaveWorkspace = useAction(leaveOrganization);
+
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
+
+  /*const { data: analysisStatus } = useAction(
+    syncSEOAnalysis,
+    { analysisId: analysisId! },
+    {
+      enabled: !!analysisId,
+      refetchInterval: 1500,
+    }
+  );*/
+
+  const {
+    data: latestAudit,
+    isLoading: auditLoading,
+    refetch: refetchLatestAudit,
+  } = useQuery(getLatestSEOAudit);
+
+  const [analysisStatus, setAnalysisStatus] = useState<any>(null);
+
+  const syncAnalysis = useAction(syncSEOAnalysis);
+
+  useEffect(() => {
+    if(!analysisId) return;
+
+    let canceled = false;
+
+    async function poll() {
+      while(!canceled) {
+        try {
+          const result = await syncAnalysis({
+            analysisId : analysisId!,
+          });
+
+          if(canceled) return;
+
+          setAnalysisStatus(result);
+
+          if (result.completed) {
+            await refetchLatestAudit();
+            return;
+          }
+
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1500)
+          );
+
+        } catch(error) {
+          console.error("SEO analysis polling failed: ",error);
+          break;
+        }
+      }
+
+      setStarting(false);
+    }
+
+    poll();
+
+    return () => {
+      canceled = true;
+    };
+  }, [analysisId]);
+
+  // Stop polling once LibreCrawl finishes.
+  /*useEffect(() => {
+    if (
+      analysisStatus?.crawl?.status === "completed" ||
+      analysisStatus?.analysis?.status === "COMPLETED" ||
+      analysisStatus?.analysis?.status === "FAILED"
+    ) {
+      // React Query will stop polling because we can simply
+      // leave the result displayed.
+    }
+  }, [analysisStatus]);*/
+
+  async function handleStartAnalysis() {
+    if (starting) return;
+
+    setStarting(true);
+
+    try {
+      const result = await startAnalysis({});
+      setAnalysisId(result.analysisId);
+    } catch (error) {
+      console.error("Failed to start SEO analysis:", error);
+    } finally {
+      
+    }
+  }
 
   async function handleLeaveWorkspace() {
     if (
@@ -66,533 +164,147 @@ export function DashboardPage() {
     );
   }
 
+  const crawl = analysisStatus?.crawl;
+  const analysis = analysisStatus?.analysis;
+
+  const isRunning =
+    analysis?.status === "RUNNING" &&
+    crawl?.status !== "completed";
+
+  const score = analysis?.seoScore;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 
         {/* Header */}
-        <div className="
-          flex flex-col gap-4
-          sm:flex-row
-          sm:items-center
-          sm:justify-between
-        ">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">
-              
-            </p>
-
-            <h1 className="
-              mt-1
-              text-3xl font-bold
-              tracking-tight
-            ">
+            <h1 className="text-3xl font-bold tracking-tight">
               {organization.name} Dashboard
             </h1>
 
-            <p className="
-              mt-2
-              text-sm
-              text-muted-foreground
-            ">
+            <p className="mt-2 text-sm text-muted-foreground">
               Monitor and improve your website SEO performance.
             </p>
           </div>
-
         </div>
 
-        {/* Website selector */}
-        <div className="
-          mt-8
-          flex flex-col gap-3
-          rounded-2xl
-          border border-border
-          bg-card
-          p-4
-          shadow-sm
-          sm:flex-row
-          sm:items-center
-          sm:justify-between
-        ">
+        {/* Website */}
+        <div className="mt-8 flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="
-              flex h-10 w-10
-              items-center justify-center
-              rounded-xl
-              bg-primary/10
-              text-primary
-            ">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Globe className="h-5 w-5" />
             </div>
 
             <div>
               <p className="text-sm font-semibold">
-                No website connected
+                {organization.websiteUrl ?? "No website connected"}
               </p>
 
               <p className="text-xs text-muted-foreground">
-                Add a website to start collecting SEO data.
+                {organization.websiteUrl
+                  ? "Website connected"
+                  : "Add a website to start collecting SEO data."}
               </p>
             </div>
           </div>
-
-          <button className="
-            rounded-lg
-            border border-border
-            px-3 py-2
-            text-sm
-            transition
-            hover:bg-muted
-          ">
-            Add website
-          </button>
         </div>
 
-        {/* KPI cards */}
-        <div className="
-          mt-6
-          grid
-          grid-cols-1
-          gap-4
-          sm:grid-cols-2
-          lg:grid-cols-4
-        ">
-
+        {/* KPI */}
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             title="SEO Health"
-            value="-"
-            description="Run your first audit"
+            value={score != null ? `${score}` : "-"}
+            description={
+              score != null
+                ? "Latest SEO score"
+                : "Run your first audit"
+            }
             icon={<Activity className="h-5 w-5" />}
           />
 
           <MetricCard
-            title="Organic Traffic"
-            value="0"
-            description="No data available"
-            icon={<TrendingUp className="h-5 w-5" />}
+            title="Pages Crawled"
+            value={`${crawl?.stats?.crawled ?? analysis?.pagesCrawled ?? 0}`}
+            description={
+              isRunning
+                ? `${Math.round(crawl?.progress ?? 0)}% complete`
+                : "Pages analyzed"
+            }
+            icon={<Globe className="h-5 w-5" />}
           />
 
           <MetricCard
-            title="Tracked Keywords"
-            value="0"
-            description="No keywords tracked"
+            title="SEO Issues"
+            value={`${crawl?.issues ?? analysis?.issueCount ?? 0}`}
+            description="Issues found"
             icon={<Search className="h-5 w-5" />}
           />
 
           <MetricCard
-            title="Reports"
-            value="0"
-            description="No reports generated"
-            icon={<BarChart3 className="h-5 w-5" />}
+            title="Crawl Speed"
+            value={
+              crawl?.stats?.speed
+                ? `${crawl.stats.speed.toFixed(1)}`
+                : "-"
+            }
+            description="Pages per second"
+            icon={<TrendingUp className="h-5 w-5" />}
           />
-
         </div>
 
-        {/* Main section */}
-        <div className="
-          mt-6
-          grid
-          grid-cols-1
-          gap-6
-          lg:grid-cols-3
-        ">
-
-          {/* Performance */}
-          <div className="
-            rounded-2xl
-            border border-border
-            bg-card
-            p-5
-            shadow-sm
-            lg:col-span-2
-          ">
-            <div className="
-              flex items-start
-              justify-between
-            ">
-              <div>
-                <h2 className="font-semibold">
-                  Organic Performance
-                </h2>
-
-                <p className="
-                  mt-1
-                  text-xs
-                  text-muted-foreground
-                ">
-                  Organic clicks and impressions
-                </p>
-              </div>
-
-              <button className="
-                text-xs
-                font-medium
-                text-primary
-                hover:underline
-              ">
-                View report
-              </button>
-            </div>
-
-            <div className="
-              mt-8
-              flex h-56
-              items-center
-              justify-center
-              rounded-xl
-              border border-dashed
-              border-border
-              bg-muted/30
-            ">
-              <div className="text-center">
-                <BarChart3 className="
-                  mx-auto
-                  h-8 w-8
-                  text-muted-foreground/50
-                " />
-
-                <p className="
-                  mt-3
-                  text-sm
-                  font-medium
-                ">
-                  No performance data yet
-                </p>
-
-                <p className="
-                  mt-1
-                  text-xs
-                  text-muted-foreground
-                ">
-                  Connect a website to start tracking SEO performance.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* SEO Health */}
-          <div className="
-            rounded-2xl
-            border border-border
-            bg-card
-            p-5
-            shadow-sm
-          ">
-            <div className="
-              flex items-start
-              justify-between
-            ">
-              <div>
-                <h2 className="font-semibold">
-                  SEO Health
-                </h2>
-
-                <p className="
-                  mt-1
-                  text-xs
-                  text-muted-foreground
-                ">
-                  Latest site audit
-                </p>
-              </div>
-
-              <div className="
-                flex h-12 w-12
-                items-center justify-center
-                rounded-full
-                border-4
-                border-border
-                text-sm font-bold
-                text-muted-foreground
-              ">
-                -
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-4">
-              <HealthRow
-                icon={<CheckCircle2 />}
-                label="Passed"
-                value="—"
-              />
-
-              <HealthRow
-                icon={<AlertTriangle />}
-                label="Warnings"
-                value="—"
-              />
-
-              <HealthRow
-                icon={<AlertTriangle />}
-                label="Errors"
-                value="—"
-              />
-            </div>
-
-            <button className="
-              mt-6
-              flex w-full
-              items-center
-              justify-center
-              gap-2
-              rounded-xl
-              border border-border
-              px-4 py-2.5
-              text-sm font-medium
-              transition
-              hover:bg-muted
-            ">
-              Run first audit
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+        {/* Audit */}
+        <div className="mt-6">
+          <SEOAuditCard
+            analysis={analysisStatus?.analysis}
+            crawl={analysisStatus}
+            starting={starting}
+            onStart={handleStartAnalysis}
+          />
         </div>
 
-        {/* Lower section */}
-        <div className="
-          mt-6
-          grid
-          grid-cols-1
-          gap-6
-          lg:grid-cols-2
-        ">
-
-          {/* Keywords */}
-          <div className="
-            rounded-2xl
-            border border-border
-            bg-card
-            shadow-sm
-          ">
-            <div className="
-              flex items-center
-              justify-between
-              border-b border-border
-              p-5
-            ">
-              <div>
-                <h2 className="font-semibold">
-                  Keyword Rankings
-                </h2>
-
-                <p className="
-                  mt-1
-                  text-xs
-                  text-muted-foreground
-                ">
-                  Track your most important keywords
-                </p>
-              </div>
-
-              <button className="
-                text-xs
-                font-medium
-                text-primary
-                hover:underline
-              ">
-                View all
-              </button>
-            </div>
-
-            <div className="
-              flex
-              h-40
-              items-center
-              justify-center
-              p-5
-            ">
-              <div className="text-center">
-                <Search className="
-                  mx-auto
-                  h-7 w-7
-                  text-muted-foreground/50
-                "/>
-
-                <p className="
-                  mt-3
-                  text-sm font-medium
-                ">
-                  No keywords tracked
-                </p>
-
-                <p className="
-                  mt-1
-                  text-xs
-                  text-muted-foreground
-                ">
-                  Add keywords to monitor rankings.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Recent audits */}
-          <div className="
-            rounded-2xl
-            border border-border
-            bg-card
-            shadow-sm
-          ">
-            <div className="
-              flex items-center
-              justify-between
-              border-b border-border
-              p-5
-            ">
-              <div>
-                <h2 className="font-semibold">
-                  Recent Audits
-                </h2>
-
-                <p className="
-                  mt-1
-                  text-xs
-                  text-muted-foreground
-                ">
-                  Recently completed website audits
-                </p>
-              </div>
-
-              <button className="
-                text-xs
-                font-medium
-                text-primary
-                hover:underline
-              ">
-                View all
-              </button>
-            </div>
-
-            <div className="
-              flex
-              h-40
-              items-center
-              justify-center
-              p-5
-            ">
-              <div className="text-center">
-                <FileSearch className="
-                  mx-auto
-                  h-7 w-7
-                  text-muted-foreground/50
-                "/>
-
-                <p className="
-                  mt-3
-                  text-sm font-medium
-                ">
-                  No audits yet
-                </p>
-
-                <p className="
-                  mt-1
-                  text-xs
-                  text-muted-foreground
-                ">
-                  Run your first SEO audit to see results here.
-                </p>
-              </div>
-            </div>
-          </div>
+        {/* Main */}
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <PerformanceCard />
+          <SEOHealthCard score={score} />
         </div>
 
-        {/* Quick Actions */}
-        <div className="
-          mt-6
-          rounded-2xl
-          border border-border
-          bg-card
-          p-5
-          shadow-sm
-        ">
-          <h2 className="font-semibold">
-            Quick Actions
-          </h2>
+        {/* Lower */}
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <KeywordsCard />
+          <RecentAuditsCard />
+        </div>
 
-          <div className="
-            mt-4
-            grid
-            grid-cols-1
-            gap-3
-            sm:grid-cols-3
-          ">
-            <QuickAction
-              icon={<FileSearch />}
-              title="Run SEO Audit"
-              description="Check your website for technical SEO issues."
-            />
-
-            <QuickAction
-              icon={<Search />}
-              title="Track Keywords"
-              description="Add keywords and monitor their rankings."
-            />
-
-            <QuickAction
-              icon={<BarChart3 />}
-              title="View Reports"
-              description="Analyze your SEO performance over time."
-            />
-          </div>
+        {/* Quick actions */}
+        <div className="mt-6">
+          <QuickActions
+            onRunAudit={handleStartAnalysis}
+            disabled={starting || isRunning}
+          />
         </div>
 
         {/* Workspace */}
-        <div className="
-          mt-6
-          rounded-2xl
-          border border-border
-          bg-card
-          p-5
-          shadow-sm
-        ">
+        <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
           <h2 className="font-semibold">
             Workspace
           </h2>
 
-          <p className="
-            mt-1
-            text-sm
-            text-muted-foreground
-          ">
+          <p className="mt-1 text-sm text-muted-foreground">
             Manage your team and workspace settings.
           </p>
 
-          <div className="
-            mt-4
-            flex flex-col gap-3
-            sm:flex-row
-          ">
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <Link
               to={routes.MembersRoute.to}
-              className="
-                inline-flex
-                items-center
-                justify-center
-                rounded-xl
-                border border-border
-                px-4 py-2.5
-                text-sm font-medium
-                transition
-                hover:bg-muted
-              "
+              className="inline-flex items-center justify-center rounded-xl border border-border px-4 py-2.5 text-sm font-medium transition hover:bg-muted"
             >
               Manage Members
             </Link>
 
             <button
               onClick={handleLeaveWorkspace}
-              className="
-                inline-flex
-                items-center
-                justify-center
-                rounded-xl
-                border border-destructive/30
-                px-4 py-2.5
-                text-sm font-semibold
-                text-destructive
-                transition
-                hover:bg-destructive/10
-              "
+              className="inline-flex items-center justify-center rounded-xl border border-destructive/30 px-4 py-2.5 text-sm font-semibold text-destructive transition hover:bg-destructive/10"
             >
               Leave Workspace
             </button>
@@ -601,162 +313,5 @@ export function DashboardPage() {
 
       </main>
     </div>
-  );
-}
-
-
-/* ============================================================
-   Components
-   ============================================================ */
-
-function MetricCard({
-  title,
-  value,
-  description,
-  icon,
-}: {
-  title: string;
-  value: string;
-  description: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <div className="
-      rounded-2xl
-      border border-border
-      bg-card
-      p-5
-      shadow-sm
-    ">
-      <div className="
-        flex items-center
-        justify-between
-      ">
-        <span className="
-          text-sm
-          text-muted-foreground
-        ">
-          {title}
-        </span>
-
-        <div className="
-          rounded-lg
-          bg-primary/10
-          p-2
-          text-primary
-        ">
-          {icon}
-        </div>
-      </div>
-
-      <p className="
-        mt-4
-        text-3xl
-        font-bold
-        tracking-tight
-      ">
-        {value}
-      </p>
-
-      <p className="
-        mt-1
-        text-xs
-        text-muted-foreground
-      ">
-        {description}
-      </p>
-    </div>
-  );
-}
-
-
-function HealthRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="
-      flex items-center
-      justify-between
-    ">
-      <div className="
-        flex items-center
-        gap-2
-        text-sm
-      ">
-        <span className="
-          h-4 w-4
-          text-muted-foreground
-        ">
-          {icon}
-        </span>
-
-        <span>{label}</span>
-      </div>
-
-      <span className="
-        text-sm
-        font-semibold
-      ">
-        {value}
-      </span>
-    </div>
-  );
-}
-
-
-function QuickAction({
-  icon,
-  title,
-  description,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}) {
-  return (
-    <button className="
-      flex items-start
-      gap-3
-      rounded-xl
-      border border-border
-      p-4
-      text-left
-      transition
-      hover:bg-muted
-    ">
-      <div className="
-        shrink-0
-        rounded-lg
-        bg-primary/10
-        p-2
-        text-primary
-      ">
-        {icon}
-      </div>
-
-      <div>
-        <p className="
-          text-sm
-          font-semibold
-        ">
-          {title}
-        </p>
-
-        <p className="
-          mt-1
-          text-xs
-          leading-relaxed
-          text-muted-foreground
-        ">
-          {description}
-        </p>
-      </div>
-    </button>
   );
 }

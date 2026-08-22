@@ -102,12 +102,13 @@ model SEOAnalysis {
   id              String   @id @default(uuid())
   organizationId  String
 
-  status          String
+  status          SEOAnalysisStatus @default(RUNNING)
   startedAt       DateTime @default(now())
   completedAt     DateTime?
 
   seoScore        Int?
   pagesCrawled    Int      @default(0)
+  issueCount      Int      @default(0)
 
   organization    Organization @relation(
     fields: [organizationId],
@@ -124,14 +125,16 @@ model SEOPage {
   id              String   @id @default(uuid())
   analysisId      String
 
-  url             String
-  statusCode      Int?
-  title           String?
-  metaDescription String?
-  wordCount       Int?
-  responseTime    Float?
-  size            Int?
-  internalLinks   Int?
+  url              String
+  title            String?
+  metaDescription  String?
+  statusCode       Int?
+  wordCount        Int?
+  internalLinks    Int?
+  responseTime     Float?
+  size             Int?
+  lang             String?
+  robots           String?
 
   analysis        SEOAnalysis @relation(
     fields: [analysisId],
@@ -146,12 +149,11 @@ model SEOIssue {
   id         String   @id @default(uuid())
   analysisId String
 
-  pageUrl    String?
-  type       String
-  severity   String?
-  message    String
-
-  details    Json?
+  type        String
+  severity    String?
+  message     String?
+  url         String?
+  details     Json?
 
   analysis SEOAnalysis @relation(
     fields: [analysisId],
@@ -159,7 +161,13 @@ model SEOIssue {
   )
 
   @@index([analysisId])
-  @@index([pageUrl])
+  @@index([url])
+}
+
+enum SEOAnalysisStatus {
+  RUNNING
+  COMPLETED
+  FAILED
 }
 
 
