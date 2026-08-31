@@ -1,21 +1,19 @@
 import { useEffect, useState } from "react";
-import { useAction } from "wasp/client/operations";
+import { useAction, useQuery } from "wasp/client/operations";
 import {
   startSEOAnalysis,
-  syncSEOAnalysis,
+  getSEOAnalysisStatus,
 } from "wasp/client/operations";
 import type { AnalysisProps } from "./types";
-import { OnboardingHeader } from "./OnboardingHeader"
+import { OnboardingHeader } from "./OnboardingHeader";
 
 export function WebsiteAnalysis({
   onContinue,
   onBack,
 }: AnalysisProps) {
   const startAnalysis = useAction(startSEOAnalysis);
-  const syncAnalysis = useAction(syncSEOAnalysis);
 
   const [analysisId, setAnalysisId] = useState<string | null>(null);
-  const [analysisStatus, setAnalysisStatus] = useState<any>(null);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
@@ -32,7 +30,6 @@ export function WebsiteAnalysis({
 
     try {
       const result = await startAnalysis({});
-
       setAnalysisId(result.analysisId);
     } catch (err) {
       console.error("Failed to start SEO analysis:", err);
@@ -48,69 +45,50 @@ export function WebsiteAnalysis({
   }
 
   /*
-   * Poll the backend until the analysis is complete.
+   * Poll the backend reactively until the analysis is complete.
    */
-  useEffect(() => {
-    if (!analysisId) return;
-
-    let cancelled = false;
-
-    async function poll() {
-      while (!cancelled) {
-        try {
-          const result = await syncAnalysis({
-            analysisId: analysisId!,
-          });
-
-          if (cancelled) return;
-
-          setAnalysisStatus(result);
-
-          if (result.completed) {
-            setIsAnalyzing(false);
-            setHasAnalyzed(true);
-            return;
-          }
-
-          await new Promise((resolve) =>
-            setTimeout(resolve, 5000)
-          );
-        } catch (err) {
-          console.error(
-            "SEO analysis polling failed:",
-            err
-          );
-
-          if (!cancelled) {
-            setError(
-              err instanceof Error
-                ? err.message
-                : "Failed while analyzing the website."
-            );
-
-            setIsAnalyzing(false);
-          }
-
-          return;
-        }
-      }
+  const { data: analysisStatus } = useQuery(
+    getSEOAnalysisStatus,
+    { analysisId: analysisId! },
+    {
+      enabled: !!analysisId,
+      refetchInterval: (data: any) => {
+        if (!data) return 2000;
+        const isStillRunning =
+          data.status === "running" ||
+          data.analysis?.status === "RUNNING" ||
+          data.crawl?.status === "running" ||
+          data.crawl?.status === "in_progress";
+        return isStillRunning ? 2000 : false;
+      },
     }
+  );
 
-    poll();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [analysisId]);
+  useEffect(() => {
+    if (
+      analysisStatus?.completed ||
+      analysisStatus?.analysis?.status === "COMPLETED"
+    ) {
+      setIsAnalyzing(false);
+      setHasAnalyzed(true);
+    } else if (analysisStatus?.analysis?.status === "FAILED") {
+      setIsAnalyzing(false);
+      setError("Failed while analyzing the website.");
+    }
+  }, [analysisStatus?.completed, analysisStatus?.analysis?.status]);
 
   const crawl = analysisStatus?.crawl;
 
   const pages =
-    analysisStatus?.stats?.crawled ??
+    analysisStatus?.crawled ??
+    crawl?.stats?.crawled ??
     analysisStatus?.analysis?.pagesCrawled ??
     0;
 
   const issues =
+    (Array.isArray(analysisStatus?.issues)
+      ? analysisStatus.issues.length
+      : analysisStatus?.issues) ??
     analysisStatus?.analysis?.issueCount ??
     0;
 

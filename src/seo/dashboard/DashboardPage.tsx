@@ -6,9 +6,7 @@ import {
   leaveOrganization,
   startSEOAnalysis,
   getSEOAnalysisStatus,
-  syncSEOAnalysis,
   getLatestSEOAudit,
-  getCrawlStatusQuery,
   getSEOAudits
 } from "wasp/client/operations";
 import { useNavigate } from "react-router";
@@ -20,6 +18,7 @@ import { KeywordsCard } from "./components/KeywordsCard";
 import { RecentAuditsCard } from "./components/RecentAuditsCard";
 import { QuickActions } from "./components/QuickActions";
 import { MetricCard } from "./components/MetricCard";
+import { CoreWebVitalsCard } from "./components/CoreWebVitalsCard";
 import { getGSCStats } from "wasp/client/operations";
 
 import {
@@ -73,75 +72,46 @@ export function DashboardPage() {
     isLoading: gscLoading
   } = useQuery(getGSCStats);
 
-  /*const {
-    data: CRAWLSTATUS,
-    isLoading: crawlstatus_loading,
-    refetch: refetchCrawlStatus
-  } = useQuery(getCrawlStatusQuery);*/
-
-
-
-  const [analysisStatus, setAnalysisStatus] = useState<any>(null);
-
-  const syncAnalysis = useAction(syncSEOAnalysis);
-
+  // If there's an active running analysis in audits, automatically resume tracking it
   useEffect(() => {
-    if(!analysisId) return;
-
-    let canceled = false;
-
-    async function poll() {
-      while(!canceled) {
-        try {
-          const result = await syncAnalysis({
-            analysisId : analysisId!,
-          });
-
-          if(canceled) {
-           setStarting(false);  
-           return;
-          }
-          setAnalysisStatus(result);
-
-          if (result.completed) {
-            await refetchLatestAudit();
-            await refetchAudits();
-
-            setStarting(false);
-            return;
-          }
-
-          await new Promise((resolve) =>
-            setTimeout(resolve, 1500)
-          );
-
-        } catch(error) {
-          console.error("SEO analysis polling failed: ",error);
-          break;
-        }
+    if (!analysisId && audits && audits.length > 0) {
+      const runningAudit = audits.find((a: any) => a.status === "RUNNING");
+      if (runningAudit) {
+        setAnalysisId(runningAudit.id);
       }
-
-      setStarting(false);
     }
+  }, [audits, analysisId]);
 
-    poll();
+  // Poll analysis status reactively while it is running
+  const { data: analysisStatus } = useQuery(
+    getSEOAnalysisStatus,
+    { analysisId: analysisId! },
+    {
+      enabled: !!analysisId,
+      refetchInterval: (data: any) => {
+        if (!data) return 2000;
+        const isStillRunning =
+          data.status === "running" ||
+          data.analysis?.status === "RUNNING" ||
+          data.crawl?.status === "running" ||
+          data.crawl?.status === "in_progress";
+        return isStillRunning ? 2000 : false;
+      },
+    }
+  );
 
-    return () => {
-      canceled = true;
-    };
-  }, [analysisId]);
-
-  // Stop polling once LibreCrawl finishes.
-  /*useEffect(() => {
+  // When analysis finishes, refetch latest audit and audit history
+  useEffect(() => {
     if (
-      analysisStatus?.crawl?.status === "completed" ||
+      analysisStatus?.completed ||
       analysisStatus?.analysis?.status === "COMPLETED" ||
       analysisStatus?.analysis?.status === "FAILED"
     ) {
-      // React Query will stop polling because we can simply
-      // leave the result displayed.
+      refetchLatestAudit();
+      refetchAudits();
+      setStarting(false);
     }
-  }, [analysisStatus]);*/
+  }, [analysisStatus?.completed, analysisStatus?.analysis?.status]);
 
   async function handleStartAnalysis() {
     if (starting) return;
@@ -153,8 +123,7 @@ export function DashboardPage() {
       setAnalysisId(result.analysisId);
     } catch (error) {
       console.error("Failed to start SEO analysis:", error);
-    } finally {
-      
+      setStarting(false);
     }
   }
 
@@ -238,7 +207,17 @@ console.log("WEBSITE URL:", organization.websiteUrl);
     progress: Math.round(crawl?.progress ?? 0),
   };
 
-  const score = dashboardStats.score;
+  const validTimes = (latestAudit?.pages ?? [])
+    .map((p: any) => p.responseTime)
+    .filter((t: any) => typeof t === "number" && t > 0);
+
+  const avgResponseMs =
+    validTimes.length > 0
+      ? Math.round(
+          validTimes.reduce((a: number, b: number) => a + b, 0) /
+            validTimes.length
+        )
+      : null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -314,13 +293,17 @@ console.log("WEBSITE URL:", organization.websiteUrl);
           />
 
           <MetricCard
-            title="Crawl Speed"
+            title="Avg Response Time"
             value={
-              dashboardStats.speed != null
-                ? dashboardStats.speed.toFixed(1)
+              isRunning
+                ? dashboardStats.speed != null
+                  ? `${dashboardStats.speed.toFixed(1)} p/s`
+                  : "-"
+                : avgResponseMs != null
+                ? `${avgResponseMs} ms`
                 : "-"
             }
-            description="Pages per second"
+            description={isRunning ? "Pages per second" : "Avg page response time"}
             icon={<TrendingUp className="h-5 w-5" />}
           />
         </div>
@@ -343,6 +326,11 @@ console.log("WEBSITE URL:", organization.websiteUrl);
             issueCount={dashboardStats.issues}
             issues={latestAudit?.issues ?? []}
           />
+        </div>
+
+        {/* Core Web Vitals */}
+        <div className="mt-6">
+          <CoreWebVitalsCard pagespeed={analysisStatus?.pagespeed} />
         </div>
 
         {/* Lower */}

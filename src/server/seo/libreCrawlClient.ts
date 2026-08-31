@@ -229,3 +229,25 @@ console.log(
 
   return result;
 }
+
+export function isCrawlRunning(crawl: any): boolean {
+  if (!crawl) return false;
+
+  const status = (crawl.status || "").toLowerCase();
+  if (status === "running" || status === "in_progress" || status === "crawling" || status === "started") {
+    return true;
+  }
+
+  if (status === "completed" || status === "finished" || status === "stopped" || status === "failed" || status === "error") {
+    return false;
+  }
+
+  if (typeof crawl.is_running === "boolean") return crawl.is_running;
+  if (typeof crawl.is_crawling === "boolean") return crawl.is_crawling;
+
+  if (typeof crawl.progress === "number" && crawl.progress >= 0 && crawl.progress < 100) {
+    return true;
+  }
+
+  return false;
+}

@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   FileSearch,
   Globe,
+  Zap,
 } from "lucide-react";
 
 type Props = {
@@ -13,8 +14,17 @@ export function SEOAuditSummary({ audit }: Props) {
   const pages = audit.pages?.length ?? audit.pagesCrawled ?? 0;
   const issues = audit.issues?.length ?? audit.issueCount ?? 0;
 
+  const validSpeeds = (audit.pages ?? [])
+    .map((p: any) => p.responseTime)
+    .filter((t: any) => typeof t === "number" && t > 0);
+
+  const avgSpeed =
+    validSpeeds.length > 0
+      ? Math.round(validSpeeds.reduce((a: number, b: number) => a + b, 0) / validSpeeds.length)
+      : null;
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <AuditStat
         icon={<Activity className="h-5 w-5" />}
         label="SEO Score"
@@ -35,6 +45,12 @@ export function SEOAuditSummary({ audit }: Props) {
         icon={<AlertTriangle className="h-5 w-5" />}
         label="Issues"
         value={String(issues)}
+      />
+
+      <AuditStat
+        icon={<Zap className="h-5 w-5" />}
+        label="Avg Response Time"
+        value={avgSpeed != null ? `${avgSpeed} ms` : "—"}
       />
     </div>
   );

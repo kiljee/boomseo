@@ -19,34 +19,41 @@ type LibreCrawlIssue = {
 	[key: string]: unknown;
 };
 
+
 export function calculateSEOScore(
-	pages: LibreCrawlPage[],
-	issues: LibreCrawlIssue[]
+  pages: LibreCrawlPage[],
+  issues: LibreCrawlIssue[]
 ) {
-	if(pages.length == 0)
-		return 0;
+  if (pages.length === 0) return 0;
 
-	let score = 100;
+  const severityWeights: Record<string, number> = {
+    critical: 10,
+    high: 5,
+    medium: 2,
+    low: 1,
+  };
 
-	for(const issue of issues) {
-		const severity = issue.severity?.toLowerCase();
+  let totalPenalty = 0;
 
-		if(severity === "critical") {
-			score -= 8;
-		}
-		else if(severity == "high") {
-			score -= 5;
-		}
-		else if(severity === "medium") {
-			score -= 3;
-		}
-		else {
-			score -= 1;
-		}
-	}
+  for (const issue of issues) {
+    const severity =
+      issue.severity?.toLowerCase() ?? "low";
 
+    totalPenalty +=
+      severityWeights[severity] ?? 1;
+  }
 
-	return Math.max(0, Math.min(100, score));
+  // Normalize issue penalty by number of pages.
+  const penaltyPerPage =
+    totalPenalty / pages.length;
+
+  // Convert to a 0–100 score.
+  const score =
+    100 - penaltyPerPage * 10;
+
+  return Math.round(
+    Math.max(0, Math.min(100, score))
+  );
 }
 
 export function parseCrawlResults(crawl: any) {

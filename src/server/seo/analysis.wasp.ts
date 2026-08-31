@@ -1,6 +1,7 @@
-import { action, query, type Spec } from "@wasp.sh/spec";
+import { action, query, job, type Spec } from "@wasp.sh/spec";
 import { getSEOAnalysisStatus, getLatestSEOAudit, getSEOAudits, getSEOAudit, getCrawlStatusQuery, getGSCStats, getSEOPlan } from "./queries" with {type: "ref"};
 import { startSEOAnalysis, syncSEOAnalysis, importGSCData, saveSEOContext, saveCompetitors, generateSEOPlan } from "./actions" with {type: "ref"};
+import { crawlWebsiteJob } from "./crawlerJob" with { type: "ref" };
 
 
 export const analysisSpec : Spec = [
@@ -54,5 +55,10 @@ export const analysisSpec : Spec = [
 
     action(generateSEOPlan, {
       entities: ["Organization", "Competitor", "SEOPlan", "SEOAnalysis", "GSCImport"]
+    }),
+
+    job(crawlWebsiteJob, {
+      executor: "PgBoss",
+      entities: ["SEOAnalysis", "SEOPage", "SEOIssue", "Organization"],
     }),
 ];

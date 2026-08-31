@@ -40,7 +40,7 @@ export function SEOAuditPages({ pages }: Props) {
                 {page.url}
               </p>
 
-              <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
+              <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
                 <span>
                   Status: {page.statusCode ?? "—"}
                 </span>
@@ -52,6 +52,23 @@ export function SEOAuditPages({ pages }: Props) {
                 <span>
                   Links: {page.internalLinks ?? "—"}
                 </span>
+
+                {page.responseTime != null && (
+                  <span className="flex items-center gap-1 font-medium">
+                    Speed:
+                    <span
+                      className={
+                        page.responseTime < 500
+                          ? "text-green-600 dark:text-green-400"
+                          : page.responseTime < 1500
+                          ? "text-yellow-600 dark:text-yellow-400"
+                          : "text-destructive"
+                      }
+                    >
+                      {Math.round(page.responseTime)} ms
+                    </span>
+                  </span>
+                )}
               </div>
             </div>
           ))}

@@ -1,7 +1,10 @@
 import {
   startCrawl,
   getCrawlStatus,
+  isCrawlRunning,
 } from "./libreCrawlClient";
+
+import { crawlWebsiteJob } from "wasp/server/jobs";
 
 import {
   parseCrawlResults,
@@ -46,6 +49,11 @@ export const startSEOAnalysis = async (
       organization.websiteUrl
     );
 
+    // Enqueue the background worker job to poll and finalize the crawl
+    await crawlWebsiteJob.submit({
+      analysisId: analysis.id,
+    });
+
     return {
       analysisId: analysis.id,
     };
@@ -77,6 +85,10 @@ export const syncSEOAnalysis = async (
       where: {
         id: args.analysisId,
       },
+      include: {
+        pages: true,
+        issues: true,
+      },
     });
 
   if (!analysis) {
@@ -90,14 +102,34 @@ export const syncSEOAnalysis = async (
     throw new Error("Unauthorized");
   }
 
+  if (analysis.status === "COMPLETED") {
+    return {
+      completed: true,
+      status: "completed",
+      analysis,
+      crawled: analysis.pagesCrawled,
+      issues: analysis.issues,
+    };
+  }
+
+  if (analysis.status === "FAILED") {
+    return {
+      completed: true,
+      status: "failed",
+      analysis,
+      crawled: 0,
+      issues: [],
+    };
+  }
+
   const crawl = await getCrawlStatus();
 
-  if (crawl.is_running || crawl.stats?.crawled === 0) {
+  if (isCrawlRunning(crawl)) {
     return {
       status: "running",
       progress: crawl.progress ?? 0,
       completed: false,
-      crawled: crawl.stats?.crawled ?? 0,
+      crawled: crawl.stats?.crawled ?? crawl.urls?.length ?? 0,
       discovered: crawl.stats?.discovered ?? 0,
       issues: crawl.issues ?? [],
     };

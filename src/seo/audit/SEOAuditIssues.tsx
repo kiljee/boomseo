@@ -101,7 +101,9 @@ function IssueItem({ issue }: { issue: any }) {
 
           {issue.details?.details && (
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {issue.details.details}
+              {typeof issue.details.details === "string"
+                ? issue.details.details
+                : JSON.stringify(issue.details.details)}
             </p>
           )}
 

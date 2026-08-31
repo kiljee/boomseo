@@ -15,6 +15,10 @@ export const getSEOAnalysisStatus = async (
       where: {
         id: args.analysisId,
       },
+      include: {
+        pages: true,
+        issues: true,
+      },
     });
 
   if (!analysis) {
@@ -28,27 +32,42 @@ export const getSEOAnalysisStatus = async (
     throw new Error("Unauthorized");
   }
 
-  const crawl =
-    await getCrawlStatus();
+  let crawl: any = null;
+  if (analysis.status === "RUNNING") {
+    try {
+      crawl = await getCrawlStatus();
+    } catch (e) {
+      console.warn("Could not fetch LibreCrawl status:", e);
+    }
+  }
+
+  const rawIssues = crawl?.issues ?? analysis.issues ?? [];
+  const issueCount = Array.isArray(rawIssues)
+    ? rawIssues.length
+    : typeof rawIssues === "number"
+    ? rawIssues
+    : 0;
 
   return {
     analysis,
-
-    crawl: {
-      status: crawl.status,
-
-      progress:
-        crawl.progress ?? 0,
-
-      stats:
-        crawl.stats ?? null,
-
-      pages:
-        crawl.urls?.length ?? 0,
-
-      issues:
-        crawl.issues?.length ?? 0,
-    },
+    completed: analysis.status === "COMPLETED",
+    status: analysis.status.toLowerCase(),
+    progress: crawl?.progress ?? (analysis.status === "COMPLETED" ? 100 : 0),
+    crawled: crawl?.stats?.crawled ?? crawl?.urls?.length ?? analysis.pagesCrawled ?? 0,
+    discovered: crawl?.stats?.discovered ?? 0,
+    issues: issueCount,
+    issueList: Array.isArray(rawIssues) ? rawIssues : [],
+    crawl: crawl
+      ? {
+          status: crawl.status,
+          progress: crawl.progress ?? 0,
+          stats: crawl.stats ?? null,
+          pages: crawl.urls?.length ?? 0,
+          issues: Array.isArray(crawl.issues)
+            ? crawl.issues.length
+            : crawl.issues ?? 0,
+        }
+      : null,
   };
 };
 

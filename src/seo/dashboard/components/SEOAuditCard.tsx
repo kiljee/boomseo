@@ -112,7 +112,13 @@ export function SEOAuditCard({
 
             <Stat
               label="Issues"
-              value={crawl?.issues ?? 0}
+              value={
+                Array.isArray(crawl?.issues)
+                  ? crawl.issues.length
+                  : typeof crawl?.issues === "number"
+                  ? crawl.issues
+                  : 0
+              }
             />
 
             <Stat
