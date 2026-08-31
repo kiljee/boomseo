@@ -59,6 +59,16 @@ model Organization {
   invitations               OrganizationInvitation[]
 
   analyses SEOAnalysis[]
+
+  gscImports GSCImport?
+
+  seoGoal     String?
+  seoAudience String?
+  seoTone     String?
+  seoLanguage String?
+
+  competitors Competitor[]
+  seoPlan     SEOPlan?
 }
 
 enum Role {
@@ -76,7 +86,7 @@ model Membership {
   role Role                 @default(MEMBER)
 
   user User                 @relation(fields: [userId], references: [id])
-  organization Organization @relation(fields: [orgId], references: [id])
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
   @@unique([userId, orgId])
 }
@@ -95,7 +105,7 @@ model OrganizationInvitation {
   acceptedAt                DateTime?
   accepted                  Boolean
 
-  organization              Organization @relation(fields: [activeOrganizationId], references: [id])
+  organization              Organization @relation(fields: [activeOrganizationId], references: [id], onDelete: Cascade)
 }
 
 model SEOAnalysis {
@@ -112,7 +122,8 @@ model SEOAnalysis {
 
   organization    Organization @relation(
     fields: [organizationId],
-    references: [id]
+    references: [id],
+    onDelete: Cascade
   )
 
   pages  SEOPage[]
@@ -138,7 +149,8 @@ model SEOPage {
 
   analysis        SEOAnalysis @relation(
     fields: [analysisId],
-    references: [id]
+    references: [id],
+    onDelete: Cascade
   )
 
   @@index([analysisId])
@@ -157,7 +169,8 @@ model SEOIssue {
 
   analysis SEOAnalysis @relation(
     fields: [analysisId],
-    references: [id]
+    references: [id],
+    onDelete: Cascade
   )
 
   @@index([analysisId])
@@ -168,6 +181,76 @@ enum SEOAnalysisStatus {
   RUNNING
   COMPLETED
   FAILED
+}
+
+model GSCImport {
+  id              String @id @default(uuid())
+  organizationId  String @unique
+
+  startDate       DateTime?
+  endDate         DateTime?
+  importedAt      DateTime @default(now())
+
+  rows            GSCQuery[]
+
+  organization    Organization @relation(
+    fields: [organizationId],
+    references: [id],
+    onDelete: Cascade
+  )
+}
+
+model GSCQuery {
+  id              String  @id @default(uuid())
+  importId        String
+
+  query           String
+  impressions     Int
+  clicks          Int
+  ctr             Float
+  position        Float
+
+  import GSCImport @relation(
+    fields: [importId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([importId])
+  @@index([query])
+}
+
+model Competitor {
+  id              String  @id @default(uuid())
+  organizationId  String
+  url             String
+  createdAt       DateTime @default(now())
+
+  organization    Organization @relation(
+    fields: [organizationId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([organizationId])
+}
+
+model SEOPlan {
+  id              String @id @default(uuid())
+  organizationId  String @unique
+
+  status          String @default("GENERATING")
+  data            Json
+
+  createdAt       DateTime @default(now())
+  completedAt     DateTime?
+
+  organization    Organization @relation(
+    fields: [organizationId],
+    references: [id],
+    onDelete: Cascade
+  )
+
 }
 
 

@@ -1,6 +1,6 @@
 import { action, query, type Spec } from "@wasp.sh/spec";
-import { getSEOAnalysisStatus, getLatestSEOAudit } from "./queries" with {type: "ref"};
-import { startSEOAnalysis, syncSEOAnalysis } from "./actions" with {type: "ref"};
+import { getSEOAnalysisStatus, getLatestSEOAudit, getSEOAudits, getSEOAudit, getCrawlStatusQuery, getGSCStats, getSEOPlan } from "./queries" with {type: "ref"};
+import { startSEOAnalysis, syncSEOAnalysis, importGSCData, saveSEOContext, saveCompetitors, generateSEOPlan } from "./actions" with {type: "ref"};
 
 
 export const analysisSpec : Spec = [
@@ -12,11 +12,47 @@ export const analysisSpec : Spec = [
       entities: ["Organization", "SEOAnalysis"]
     }),
 
+    query(getSEOAudits, {
+      entities: ["Organization", "SEOAnalysis", "SEOPage", "SEOIssue"],
+    }),
+
+    query(getSEOAudit, {
+      entities: ["Organization", "SEOAnalysis", "SEOPage", "SEOIssue"],
+    }),
+
+    query(getCrawlStatusQuery, {
+      entities: ["Organization", "SEOAnalysis", "SEOPage", "SEOIssue"],
+    }),
+
+    query(getGSCStats, {
+      entities: ["Organization", "GSCImport", "GSCQuery", "Membership"],
+    }),
+
+    query(getSEOPlan, {
+      entities: ["Organization", "SEOPlan"],
+    }),
+
     action(startSEOAnalysis, {
       entities: ["Organization", "SEOAnalysis"]   
     }),
 
     action(syncSEOAnalysis, {
       entities: ["Organization", "SEOAnalysis", "SEOPage", "SEOIssue"]
-    })
+    }),
+
+    action(importGSCData, {
+      entities: ["Organization", "GSCImport", "GSCQuery", "Membership"]
+    }),
+
+    action(saveSEOContext, {
+      entities: ["Organization"]
+    }),
+
+    action(saveCompetitors, {
+      entities: ["Organization", "Competitor"]
+    }),
+
+    action(generateSEOPlan, {
+      entities: ["Organization", "Competitor", "SEOPlan", "SEOAnalysis", "GSCImport"]
+    }),
 ];

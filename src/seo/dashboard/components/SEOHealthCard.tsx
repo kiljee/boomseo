@@ -1,18 +1,37 @@
 import {
-  CheckCircle2,
   AlertTriangle,
+  CheckCircle2,
   XCircle,
 } from "lucide-react";
 
 type Props = {
-  score?: number | null;
+  score: number | null;
   issueCount?: number;
+  issues?: any[];
 };
 
 export function SEOHealthCard({
   score,
   issueCount = 0,
+  issues = [],
 }: Props) {
+  const warnings = issues.filter(
+    (issue) => issue.type?.toLowerCase() === "warning"
+  ).length;
+
+  const errors = issues.filter(
+    (issue) =>
+      issue.type?.toLowerCase() === "error" ||
+      issue.type?.toLowerCase() === "critical"
+  ).length;
+
+  console.log(issues);
+
+  const passed =
+    score != null
+      ? Math.max(0, 100 - warnings - errors)
+      : 0;
+
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between">
@@ -35,19 +54,19 @@ export function SEOHealthCard({
         <Row
           icon={<CheckCircle2 />}
           label="Passed"
-          value={score != null ? "—" : "—"}
+          value={score != null ? passed : "—"}
         />
 
         <Row
           icon={<AlertTriangle />}
           label="Warnings"
-          value={issueCount}
+          value={score != null ? warnings : "—"}
         />
 
         <Row
           icon={<XCircle />}
           label="Errors"
-          value="—"
+          value={score != null ? errors : "—"}
         />
       </div>
     </div>

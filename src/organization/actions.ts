@@ -199,7 +199,12 @@ export const createOrganization = async (
             name: args.name,
             slug,
             icon: args.icon || "🔎",
-            description: args.description || null
+            description: args.description || null,
+
+            websiteUrl: args.websiteUrl,
+            industry: args.industry,
+            country: args.country,
+            language: args.language,
         }
     });
 

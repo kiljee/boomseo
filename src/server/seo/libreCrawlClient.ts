@@ -102,6 +102,9 @@ async function request(
 export async function startCrawl(
   websiteUrl: string
 ) {
+
+  await saveLibreCrawlSettings();
+
   return request("/api/start_crawl", {
     method: "POST",
     headers: {
@@ -123,7 +126,7 @@ export async function getCrawlStatus() {
       }
     );
 
-  updateSessionCookie(response);
+    updateSessionCookie(response);
 
     console.log("GETTING CRAWL STATUS!")
 
@@ -139,4 +142,90 @@ export async function getCrawlStatus() {
     console.log("Cookie: "+sessionCookie)
 
     return data;
+}
+
+
+export async function saveLibreCrawlSettings() {
+  const response = await fetch(
+    `${LIBRECRAWL_URL}/api/save_settings`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: sessionCookie ?? "",
+      },
+      body: JSON.stringify({
+        max_depth: 3,
+        max_urls: 5000000,
+
+        delay: 0.5,
+        follow_redirects: true,
+        crawl_external: false,
+
+        enable_pagespeed: true,
+        google_api_key: process.env.GOOGLE_PSI_API_KEY ?? "",
+
+        enable_javascript: true,
+
+        concurrency: 5,
+        timeout: 10,
+        retries: 3,
+        respect_robots: true,
+        discover_sitemaps: true,
+      }),
+    }
+  );
+
+  updateSessionCookie(response);
+
+  console.log("Google PSI key: "+process.env.GOOGLE_PSI_API_KEY);
+
+
+
+  if (!response.ok) {
+    throw new Error(
+      `LibreCrawl save settings failed: ${response.status}`
+    );
+  }
+
+  const result = await response.json();
+
+  console.log("LibreCrawl settings saved:", result);
+
+  // Push the settings to the currently active crawler.
+  const updateResponse = await fetch(
+    `${LIBRECRAWL_URL}/api/update_crawler_settings`,
+    {
+      method: "POST",
+      headers: {
+        Cookie: sessionCookie ?? "",
+      },
+    }
+  );
+
+  updateSessionCookie(updateResponse);
+
+  const settingsResponse = await fetch(
+  `${LIBRECRAWL_URL}/api/get_settings`,
+  {
+    headers: {
+      Cookie: sessionCookie ?? "",
+    },
+  }
+);
+
+console.log(
+  "FINAL SETTINGS:",
+  await settingsResponse.json()
+);
+
+  updateSessionCookie(settingsResponse);
+
+  if (!updateResponse.ok) {
+    throw new Error(
+      `LibreCrawl update crawler settings failed: ${updateResponse.status}`
+    );
+  }
+
+  return result;
 }

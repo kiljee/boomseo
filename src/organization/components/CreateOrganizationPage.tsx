@@ -4,7 +4,7 @@ import { useAction } from "wasp/client/operations";
 import { createOrganization } from "wasp/client/operations";
 import { routes } from "wasp/client/router";
 import { Props } from "../../onboarding/types"
-
+import { OnboardingHeader } from "../../onboarding/OnboardingHeader";
 
 
 type TeamRole = "ADMIN" | "MEMBER";
@@ -145,7 +145,9 @@ export function CreateOrganizationPage({
         })),
     });
 
-    navigate(routes.DashboardRoute.to);
+    onContinue();
+
+    //navigate(routes.DashboardRoute.to);
   }
 
   return (

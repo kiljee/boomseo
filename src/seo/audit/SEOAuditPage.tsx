@@ -1,29 +1,55 @@
 import { useQuery } from "wasp/client/operations";
-import { getLatestSEOAudit } from "wasp/client/operations";
+import {
+  getLatestSEOAudit,
+  getSEOAudit,
+} from "wasp/client/operations";
 
 import { SEOAuditSummary } from "./SEOAuditSummary";
 import { SEOAuditIssues } from "./SEOAuditIssues";
 import { SEOAuditPages } from "./SEOAuditPages";
 
 export function SEOAuditPage() {
-  const {
-    data: audit,
-    isLoading,
-  } = useQuery(getLatestSEOAudit);
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">
-        Loading SEO audit...
-      </div>
-    );
+  const params = new URLSearchParams(window.location.search);
+  const analysisId = params.get("id");
+const latestQuery = useQuery(
+  getLatestSEOAudit,
+  undefined,
+  {
+    enabled: !analysisId,
   }
+);
+
+const specificQuery = useQuery(
+  getSEOAudit,
+  {
+    analysisId: analysisId!,
+  },
+  {
+    enabled: !!analysisId,
+  }
+);
+
+const audit = analysisId
+  ? specificQuery.data
+  : latestQuery.data;
+
+const isLoading = analysisId
+  ? specificQuery.isLoading
+  : latestQuery.isLoading;
+
+if (isLoading) {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">
+      Loading SEO audit...
+    </div>
+  );
+}
 
   if (!audit) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12 text-center">
         <h1 className="text-2xl font-bold">
-          No SEO audit yet
+          No SEO audit found
         </h1>
 
         <p className="mt-2 text-sm text-muted-foreground">
@@ -42,11 +68,11 @@ export function SEOAuditPage() {
 
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            Latest SEO Audit
+            {analysisId ? "SEO Audit" : "Latest SEO Audit"}
           </h1>
 
           <p className="mt-2 text-sm text-muted-foreground">
-            Overview of your latest website analysis.
+            Overview of your website analysis.
           </p>
 
           {audit.completedAt && (

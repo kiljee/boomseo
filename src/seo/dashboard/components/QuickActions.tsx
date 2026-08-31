@@ -6,11 +6,13 @@ import {
 
 type Props = {
   onRunAudit: () => void;
+  onViewPlan: () => void;
   disabled?: boolean;
 };
 
 export function QuickActions({
   onRunAudit,
+  onViewPlan,
   disabled,
 }: Props) {
   return (
@@ -36,8 +38,9 @@ export function QuickActions({
 
         <Action
           icon={<BarChart3 />}
-          title="View Reports"
-          description="Analyze your SEO performance over time."
+          title="View SEO Plan"
+          onClick={onViewPlan}
+          description="View detailed SEO plan."
         />
       </div>
     </div>

@@ -144,7 +144,7 @@ export function WorkspacesPage() {
           <button
             onClick={() =>
               navigate(
-                routes.CreateOrganizationRoute.to
+                routes.OnboardingRoute.to
               )
             }
             className="

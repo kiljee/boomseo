@@ -4,7 +4,6 @@ export type Props = {
 };
 
 export type AnalysisProps = {
-  websiteUrl: string;
   onContinue: () => void;
   onBack?: () => void;
 };

@@ -15,7 +15,6 @@ import { AnalysisProps } from "./types"
 export function AnalysisTestPage() {
   return (
     <WebsiteAnalysis
-      websiteUrl="example.com"
       onContinue={() =>
         console.log("Analysis complete")
       }

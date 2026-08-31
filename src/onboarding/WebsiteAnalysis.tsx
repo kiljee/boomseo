@@ -1,46 +1,136 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAction } from "wasp/client/operations";
+import {
+  startSEOAnalysis,
+  syncSEOAnalysis,
+} from "wasp/client/operations";
 import type { AnalysisProps } from "./types";
+import { OnboardingHeader } from "./OnboardingHeader"
 
 export function WebsiteAnalysis({
-  websiteUrl,
   onContinue,
   onBack,
 }: AnalysisProps) {
+  const startAnalysis = useAction(startSEOAnalysis);
+  const syncAnalysis = useAction(syncSEOAnalysis);
+
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
+  const [analysisStatus, setAnalysisStatus] = useState<any>(null);
+
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  /*
+   * Start the actual backend analysis.
+   */
   async function handleAnalyze() {
+    if (isAnalyzing) return;
+
     setIsAnalyzing(true);
+    setError(null);
 
-    // TODO: Replace with LibreCrawl action.
-    await new Promise((resolve) =>
-      setTimeout(resolve, 2500)
-    );
+    try {
+      const result = await startAnalysis({});
 
-    setIsAnalyzing(false);
-    setHasAnalyzed(true);
+      setAnalysisId(result.analysisId);
+    } catch (err) {
+      console.error("Failed to start SEO analysis:", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to start website analysis."
+      );
+
+      setIsAnalyzing(false);
+    }
   }
+
+  /*
+   * Poll the backend until the analysis is complete.
+   */
+  useEffect(() => {
+    if (!analysisId) return;
+
+    let cancelled = false;
+
+    async function poll() {
+      while (!cancelled) {
+        try {
+          const result = await syncAnalysis({
+            analysisId: analysisId!,
+          });
+
+          if (cancelled) return;
+
+          setAnalysisStatus(result);
+
+          if (result.completed) {
+            setIsAnalyzing(false);
+            setHasAnalyzed(true);
+            return;
+          }
+
+          await new Promise((resolve) =>
+            setTimeout(resolve, 5000)
+          );
+        } catch (err) {
+          console.error(
+            "SEO analysis polling failed:",
+            err
+          );
+
+          if (!cancelled) {
+            setError(
+              err instanceof Error
+                ? err.message
+                : "Failed while analyzing the website."
+            );
+
+            setIsAnalyzing(false);
+          }
+
+          return;
+        }
+      }
+    }
+
+    poll();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [analysisId]);
+
+  const crawl = analysisStatus?.crawl;
+
+  const pages =
+    analysisStatus?.stats?.crawled ??
+    analysisStatus?.analysis?.pagesCrawled ??
+    0;
+
+  const issues =
+    analysisStatus?.analysis?.issueCount ??
+    0;
+
+  const seoScore =
+    analysisStatus?.analysis?.seoScore ?? null;
+
+  const progress =
+    analysisStatus?.progress ??
+    crawl?.progress ??
+    0;
 
   return (
     <div className="min-h-screen bg-background px-4 py-10">
       <div className="mx-auto w-full max-w-2xl">
 
         {/* Step indicator */}
-        <div className="mb-8 flex items-center justify-center gap-2">
-          <StepIndicator number={1} completed />
-          <StepLine />
-          <StepIndicator number={2} active />
-          <StepLine />
-          <StepIndicator number={3} />
-          <StepLine />
-          <StepIndicator number={4} />
-        </div>
+        <OnboardingHeader step={2}/>
 
         {/* Header */}
         <div className="mb-8">
-          <p className="text-sm font-medium text-primary">
-            Step 2 of 6
-          </p>
 
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
             Analyze your website
@@ -55,21 +145,10 @@ export function WebsiteAnalysis({
         {/* Main card */}
         <div className="rounded-2xl border border-border bg-card shadow-sm">
 
-          {/* Website */}
-          <div className="border-b border-border p-6 sm:p-7">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Website
-            </p>
-
-            <p className="mt-2 truncate text-base font-semibold text-foreground">
-              {websiteUrl}
-            </p>
-          </div>
-
           {/* Content */}
           <div className="p-6 sm:p-7">
 
-            {/* Initial state */}
+            {/* Initial */}
             {!isAnalyzing && !hasAnalyzed && (
               <div>
                 <h2 className="text-lg font-semibold text-foreground">
@@ -81,6 +160,12 @@ export function WebsiteAnalysis({
                   metadata, links, content, and other important
                   SEO signals.
                 </p>
+
+                {error && (
+                  <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+                    {error}
+                  </div>
+                )}
 
                 <button
                   type="button"
@@ -101,27 +186,48 @@ export function WebsiteAnalysis({
             {/* Loading */}
             {isAnalyzing && (
               <div className="py-6 text-center">
-                <div className="
-                  mx-auto h-10 w-10
-                  animate-spin rounded-full
-                  border-2 border-muted
-                  border-t-primary
-                " />
+                <div
+                  className="
+                    mx-auto h-10 w-10
+                    animate-spin rounded-full
+                    border-2 border-muted
+                    border-t-primary
+                  "
+                />
 
                 <h2 className="mt-5 text-lg font-semibold text-foreground">
                   Analyzing your website
                 </h2>
 
                 <p className="mt-2 text-sm text-muted-foreground">
-                  This may take a few moments.
+                  {progress > 0
+                    ? `${Math.round(progress)}% complete`
+                    : "This may take a few moments."}
                 </p>
 
-                <div className="
-                  mx-auto mt-6 max-w-sm
-                  rounded-xl border border-border
-                  bg-muted/30 p-4
-                  text-left text-sm
-                ">
+                {/* Progress bar */}
+                <div className="mx-auto mt-5 max-w-sm">
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          Math.max(0, progress)
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div
+                  className="
+                    mx-auto mt-6 max-w-sm
+                    rounded-xl border border-border
+                    bg-muted/30 p-4
+                    text-left text-sm
+                  "
+                >
                   <AnalysisProgressItem
                     text="Connecting to website"
                     completed
@@ -129,17 +235,29 @@ export function WebsiteAnalysis({
 
                   <AnalysisProgressItem
                     text="Discovering pages"
-                    completed
+                    completed={
+                      pages > 0
+                    }
                   />
 
                   <AnalysisProgressItem
                     text="Checking SEO signals"
+                    completed={
+                      pages > 0
+                    }
                   />
 
                   <AnalysisProgressItem
                     text="Finding issues and opportunities"
+                    completed={false}
                   />
                 </div>
+
+                {error && (
+                  <p className="mt-4 text-sm text-destructive">
+                    {error}
+                  </p>
+                )}
               </div>
             )}
 
@@ -147,14 +265,16 @@ export function WebsiteAnalysis({
             {hasAnalyzed && !isAnalyzing && (
               <div>
                 <div className="flex items-center gap-3">
-                  <div className="
-                    flex h-9 w-9
-                    items-center justify-center
-                    rounded-full
-                    bg-green-500/10
-                    text-green-600
-                    dark:text-green-400
-                  ">
+                  <div
+                    className="
+                      flex h-9 w-9
+                      items-center justify-center
+                      rounded-full
+                      bg-green-500/10
+                      text-green-600
+                      dark:text-green-400
+                    "
+                  >
                     ✓
                   </div>
 
@@ -169,32 +289,31 @@ export function WebsiteAnalysis({
                   </div>
                 </div>
 
-                {/* Results preview */}
-                <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {/* Actual results */}
+                <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <PreviewStat
                     label="Pages"
-                    value="—"
+                    value={String(pages)}
                   />
 
                   <PreviewStat
                     label="SEO Score"
-                    value="—"
-                  />
-
-                  <PreviewStat
-                    label="Keywords"
-                    value="—"
+                    value={
+                      seoScore != null
+                        ? String(seoScore)
+                        : "—"
+                    }
                   />
 
                   <PreviewStat
                     label="Issues"
-                    value="—"
+                    value={String(issues)}
                   />
                 </div>
 
                 <p className="mt-4 text-xs text-muted-foreground">
-                  Detailed results will be available
-                  from the SEO dashboard.
+                  Detailed results will be available from the
+                  SEO dashboard.
                 </p>
 
                 <button
@@ -268,9 +387,7 @@ function StepIndicator({
 }
 
 function StepLine() {
-  return (
-    <div className="h-px w-6 bg-border" />
-  );
+  return <div className="h-px w-6 bg-border" />;
 }
 
 function AnalysisProgressItem({

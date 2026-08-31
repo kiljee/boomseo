@@ -7,7 +7,9 @@ import {
   startSEOAnalysis,
   getSEOAnalysisStatus,
   syncSEOAnalysis,
-  getLatestSEOAudit
+  getLatestSEOAudit,
+  getCrawlStatusQuery,
+  getSEOAudits
 } from "wasp/client/operations";
 import { useNavigate } from "react-router";
 
@@ -18,6 +20,7 @@ import { KeywordsCard } from "./components/KeywordsCard";
 import { RecentAuditsCard } from "./components/RecentAuditsCard";
 import { QuickActions } from "./components/QuickActions";
 import { MetricCard } from "./components/MetricCard";
+import { getGSCStats } from "wasp/client/operations";
 
 import {
   Activity,
@@ -54,6 +57,30 @@ export function DashboardPage() {
     refetch: refetchLatestAudit,
   } = useQuery(getLatestSEOAudit);
 
+  const {
+    data: audits,
+    isLoading: auditsLoading,
+    refetch: refetchAudits
+  } = useQuery(getSEOAudits);
+
+  console.log({
+    audits,
+    auditsLoading
+  });
+
+  const {
+    data: gscStats,
+    isLoading: gscLoading
+  } = useQuery(getGSCStats);
+
+  /*const {
+    data: CRAWLSTATUS,
+    isLoading: crawlstatus_loading,
+    refetch: refetchCrawlStatus
+  } = useQuery(getCrawlStatusQuery);*/
+
+
+
   const [analysisStatus, setAnalysisStatus] = useState<any>(null);
 
   const syncAnalysis = useAction(syncSEOAnalysis);
@@ -70,12 +97,17 @@ export function DashboardPage() {
             analysisId : analysisId!,
           });
 
-          if(canceled) return;
-
+          if(canceled) {
+           setStarting(false);  
+           return;
+          }
           setAnalysisStatus(result);
 
           if (result.completed) {
             await refetchLatestAudit();
+            await refetchAudits();
+
+            setStarting(false);
             return;
           }
 
@@ -126,6 +158,12 @@ export function DashboardPage() {
     }
   }
 
+  async function handleViewPlan() {
+    navigate(routes.ViewSEOPlanRoute.to);
+  }
+
+  
+
   async function handleLeaveWorkspace() {
     if (
       !confirm(
@@ -138,6 +176,10 @@ export function DashboardPage() {
     await leaveWorkspace({});
     navigate(routes.WorkspacesRoute.to);
     window.location.reload();
+  }
+
+  async function runGetStatus() {
+    //await getCrawlStatusQuery({analysisId:"5"});
   }
 
   if (isLoading) {
@@ -164,6 +206,11 @@ export function DashboardPage() {
     );
   }
 
+  console.log(latestAudit);
+
+  console.log("ORGANIZATION:", organization);
+console.log("WEBSITE URL:", organization.websiteUrl);
+
   const crawl = analysisStatus?.crawl;
   const analysis = analysisStatus?.analysis;
 
@@ -171,7 +218,27 @@ export function DashboardPage() {
     analysis?.status === "RUNNING" &&
     crawl?.status !== "completed";
 
-  const score = analysis?.seoScore;
+  const dashboardStats = {
+    score: isRunning
+      ? null
+      : latestAudit?.seoScore ?? analysis?.seoScore ?? null,
+
+    pages: isRunning
+      ? crawl?.stats?.crawled ?? 0
+      : latestAudit?.pagesCrawled ?? analysis?.pagesCrawled ?? 0,
+
+    issues: isRunning
+      ? crawl?.issues ?? 0
+      : latestAudit?.issueCount ?? analysis?.issueCount ?? 0,
+
+    speed: isRunning
+      ? crawl?.stats?.speed ?? null
+      : null,
+
+    progress: Math.round(crawl?.progress ?? 0),
+  };
+
+  const score = dashboardStats.score;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -215,9 +282,13 @@ export function DashboardPage() {
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             title="SEO Health"
-            value={score != null ? `${score}` : "-"}
+            value={
+              dashboardStats.score != null
+                ? `${dashboardStats.score}`
+                : "-"
+            }
             description={
-              score != null
+              dashboardStats.score != null
                 ? "Latest SEO score"
                 : "Run your first audit"
             }
@@ -226,10 +297,10 @@ export function DashboardPage() {
 
           <MetricCard
             title="Pages Crawled"
-            value={`${crawl?.stats?.crawled ?? analysis?.pagesCrawled ?? 0}`}
+            value={`${dashboardStats.pages}`}
             description={
               isRunning
-                ? `${Math.round(crawl?.progress ?? 0)}% complete`
+                ? `${dashboardStats.progress}% complete`
                 : "Pages analyzed"
             }
             icon={<Globe className="h-5 w-5" />}
@@ -237,7 +308,7 @@ export function DashboardPage() {
 
           <MetricCard
             title="SEO Issues"
-            value={`${crawl?.issues ?? analysis?.issueCount ?? 0}`}
+            value={`${dashboardStats.issues}`}
             description="Issues found"
             icon={<Search className="h-5 w-5" />}
           />
@@ -245,8 +316,8 @@ export function DashboardPage() {
           <MetricCard
             title="Crawl Speed"
             value={
-              crawl?.stats?.speed
-                ? `${crawl.stats.speed.toFixed(1)}`
+              dashboardStats.speed != null
+                ? dashboardStats.speed.toFixed(1)
                 : "-"
             }
             description="Pages per second"
@@ -266,20 +337,25 @@ export function DashboardPage() {
 
         {/* Main */}
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <PerformanceCard />
-          <SEOHealthCard score={score} />
+          <PerformanceCard gsc={gscStats?.topKeywords ?? []} />
+          <SEOHealthCard
+            score={dashboardStats.score}
+            issueCount={dashboardStats.issues}
+            issues={latestAudit?.issues ?? []}
+          />
         </div>
 
         {/* Lower */}
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <KeywordsCard />
-          <RecentAuditsCard />
+          <KeywordsCard keywords={gscStats?.topKeywords ?? []} />
+          <RecentAuditsCard audits={audits ?? []} auditsLoading={auditsLoading}/>
         </div>
 
         {/* Quick actions */}
         <div className="mt-6">
           <QuickActions
             onRunAudit={handleStartAnalysis}
+            onViewPlan={handleViewPlan}
             disabled={starting || isRunning}
           />
         </div>
@@ -308,6 +384,14 @@ export function DashboardPage() {
             >
               Leave Workspace
             </button>
+
+            
+            {/*<button
+              onClick={runGetStatus}
+              className="inline-flex items-center justify-center rounded-xl border border-destructive/30 px-4 py-2.5 text-sm font-semibold text-destructive transition hover:bg-destructive/10"
+            >
+              Run get status
+            </button>*/}
           </div>
         </div>
 

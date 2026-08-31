@@ -6,7 +6,7 @@ type LibreCrawlPage = {
 	word_count?: number;
 	internal_links?: number;
 	response_time?: number;
-	size? : number;
+	size: number;
 	lang? : string;
 	robots? : string;
 };

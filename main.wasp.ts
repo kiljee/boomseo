@@ -26,6 +26,11 @@ import { InvitationsPage } from "./src/organization/components/InvitationsPage" 
 import { OnboardingPage } from "./src/onboarding/OnboardingPage.tsx" with { type : "ref" }
 import { AnalysisTestPage } from "./src/onboarding/AnalysisTestPage.tsx" with { type : "ref" }
 import { SEOAuditPage } from "./src/seo/audit/SEOAuditPage.tsx" with { type: "ref" }
+import { AuditListPage } from "./src/seo/audits/AuditListPage.tsx" with { type: "ref" }
+import { AuditViewPage } from "./src/seo/audits/AuditViewPage.tsx" with { type: "ref" }
+import { GSCImportPage } from "./src/onboarding/gsc/GSCImport.tsx" with { type : "ref" }
+import { ViewSEOPlanPage } from "./src/seo/dashboard/components/ViewSEOPlanPage.tsx" with { type : "ref" }
+
 
 export default app({
   name: "OpenSaaS",
@@ -87,6 +92,22 @@ export default app({
     route("AuditRoute",
       "/audit",
       page(SEOAuditPage, {authRequired: true})
+    ),
+    route("AuditListRoute",
+      "/auditlist",
+      page(AuditListPage, {authRequired: true})
+    ),
+    route("AuditViewRoute",
+      "/auditview",
+      page(AuditViewPage, {authRequired: true})
+    ),
+    route("GSCImportRoute",
+      "/gsc",
+      page(GSCImportPage, {authRequired: true})
+    ),
+    route("ViewSEOPlanRoute",
+      "/view-seo-plan",
+      page(ViewSEOPlanPage, {authRequired: true})
     ),
     authSpec,
     userSpec,

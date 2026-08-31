@@ -3,7 +3,9 @@ import {
   AlertTriangle,
   ChevronDown,
   ExternalLink,
+  XCircle
 } from "lucide-react";
+
 
 type Props = {
   issues: any[];
@@ -70,11 +72,21 @@ function IssueItem({ issue }: { issue: any }) {
         onClick={() => setOpen(!open)}
         className="flex w-full items-start gap-3 text-left"
       >
+
+        
         <div
           className={`mt-0.5 shrink-0 rounded-lg p-2 ${severityClass}`}
         >
-          <AlertTriangle className="h-4 w-4" />
+          {issue.type?.toLowerCase() === "warning" && (
+            <AlertTriangle className="h-4 w-4" />
+        )}
+
+          {issue.type?.toLowerCase() === "error" && (
+            <XCircle className="h-4 w-4"/>
+        )}
+
         </div>
+        
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">

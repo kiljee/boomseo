@@ -18,8 +18,11 @@ export function OnboardingPage() {
   //const { data: onboarding, isLoading } =
   //  useQuery(getOnboardingStep);
 
-  const [step, setStep] = useState<number | null>(null);
+  const [step, setStep] = useState<number | null>(1);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const [websiteUrl, setWebsiteUrl] = useState<string>("");
+
 
   const currentStep = step; //onboarding.step;
 
@@ -30,41 +33,48 @@ export function OnboardingPage() {
   switch (step) {
     case 1:
       return <CreateOrganizationPage
-            onContinue={() => setStep(2)}
+            onContinue={() => {
+              setStep(2)
+            }}
             onBack={() => {}} //return to dashboard
+
        />;
+       break;
 
     case 2:
       return <WebsiteAnalysis
-          websiteUrl={"example.com"}
           onContinue ={() => setStep(3)}
           onBack ={() => setStep(1)}
        />;
+       break;
 
     case 3:
       return <GSCImportPage
           onContinue={() => setStep(4)}
           onBack={() => setStep(2)}
        />;
+       break;
 
     case 4:
       return <SEOContextPage
           onContinue={() => setStep(5)}
           onBack={() => setStep(3)}
        />;
+       break;
 
     case 5:
       return <CompetitorPage
           onContinue={() => setStep(6)}
           onBack={() => setStep(4)}
        />;
+       break;
 
     case 6:
       return <SEOPlanPage
-          onContinue={() => setStep(7)}
-          onBack={() => setStep(5)}
-       />;
-
+        onContinue={() => navigate(routes.DashboardRoute.to)}
+        onBack={() => setStep(5)}
+      />;
+      break;
 
     default:
       return <div> Onboarding complete. </div>;
