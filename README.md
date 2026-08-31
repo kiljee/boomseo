@@ -1,12 +1,32 @@
-# <YOUR_APP_NAME>
+# ⚡ BoomSEO
 
-Built with [Wasp](https://wasp.sh), based on the [Open Saas](https://opensaas.sh) template.
+A web-based SEO platform for analyzing websites, monitoring organic search performance, and generating AI-powered SEO recommendations.
 
-## Development
+## Features
 
-### Running locally
+* 🏢 Workspace and member management
+* 🔍 Website SEO crawling and analysis
+* 📊 Google Search Console CSV import
+* 📈 Keyword rankings and organic performance
+* 🤖 AI-generated SEO plans using OpenAI
+* 🎯 SEO context and content recommendations
+* 🏆 Competitor tracking
+* 📋 SEO audits and issue detection
 
-- Make sure you have the `.env.client` and `.env.server` files with correct dev values in the root of the project.
-- Run the database with `wasp start db` and leave it running.
-- Run `wasp start` and leave it running.
-- [OPTIONAL]: If this is the first time starting the app, or you've just made changes to your entities/prisma schema, also run `wasp db migrate-dev`.
+## Tech Stack
+
+* **Frontend:** React, TypeScript, Tailwind CSS, shadcn/ui
+* **Backend:** Wasp, Node.js, Prisma
+* **Database:** PostgreSQL
+* **AI:** OpenAI API
+* **Crawling:** LibreCrawl
+
+## Getting Started
+
+```bash
+npm install
+wasp db start
+wasp start
+```
+
+Configure your `.env` file with the required database and OpenAI credentials.

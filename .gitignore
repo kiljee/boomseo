@@ -1,2 +1,5 @@
 node_modules/
 .wasp/
+.env.server
+.env.client.example
+.env.server.example
