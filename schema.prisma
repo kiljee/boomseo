@@ -253,6 +253,64 @@ model SEOPlan {
 
 }
 
+model SEOKeyword {
+  id              String   @id @default(uuid())
+  organizationId  String
+
+  keyword         String
+  intent          String?
+  relevance       Int?
+  difficulty      Int?
+  selected        Boolean @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(
+    fields: [organizationId],
+    references: [id]
+  )
+
+  articles        SEOArticle[]
+
+  @@index([organizationId])
+}
+
+model SEOArticle {
+  id              String    @id @default(uuid())
+  organizationId  String
+  keywordId       String
+
+  title           String?
+  metaTitle       String?
+  metaDescription String?
+  slug            String?
+
+  content         String?
+  status          String     @default("DRAFT")
+
+  wordCount       Int?
+  seoScore        Int?
+
+  contentBrief    Json?
+  wdfIdfAnalysis  Json?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  organization    Organization @relation(
+      fields:[organizationId],
+      references: [id]
+  )
+  keyword         SEOKeyword  @relation(
+      fields: [keywordId],
+      references: [id]
+  )
+
+  @@index([organizationId])
+  @@index([keywordId])
+}
+
 
 
 model GptResponse {
