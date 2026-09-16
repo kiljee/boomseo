@@ -41,12 +41,27 @@ export const getSEOAnalysisStatus = async (
     }
   }
 
-  const rawIssues = crawl?.issues ?? analysis.issues ?? [];
+  const pageSpeedSummaryIssue = (analysis.issues as any[])?.find(
+    (i) => i.type === "pagespeed_summary"
+  );
+
+  const rawIssues = (crawl?.issues ?? analysis.issues ?? []).filter(
+    (i: any) => i.type !== "pagespeed_summary"
+  );
+
   const issueCount = Array.isArray(rawIssues)
     ? rawIssues.length
     : typeof rawIssues === "number"
     ? rawIssues
     : 0;
+  const firstPageSpeed =
+    crawl?.pagespeed ??
+    crawl?.stats?.pagespeed ??
+    crawl?.urls?.find((u: any) => u.pagespeed || u.lcp || u.performance_score)?.pagespeed ??
+    crawl?.urls?.[0]?.pagespeed ??
+    pageSpeedSummaryIssue?.details ??
+    null;
+
 
   return {
     analysis,
@@ -57,6 +72,7 @@ export const getSEOAnalysisStatus = async (
     discovered: crawl?.stats?.discovered ?? 0,
     issues: issueCount,
     issueList: Array.isArray(rawIssues) ? rawIssues : [],
+    pagespeed: firstPageSpeed,
     crawl: crawl
       ? {
           status: crawl.status,

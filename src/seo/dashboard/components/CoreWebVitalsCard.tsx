@@ -1,26 +1,30 @@
 import { Activity, Gauge, HelpCircle, Zap } from "lucide-react";
 
 type CoreWebVitalsProps = {
-  pagespeed?: {
-    performanceScore?: number | null;
-    lcp?: string | number | null;
-    cls?: string | number | null;
-    fcp?: string | number | null;
-    tbt?: string | number | null;
-  } | null;
+  pagespeed?: any;
 };
 
 export function CoreWebVitalsCard({ pagespeed }: CoreWebVitalsProps) {
-  const score = pagespeed?.performanceScore ?? null;
-  const lcp = formatMetric(pagespeed?.lcp, "s");
-  const cls = formatMetric(pagespeed?.cls, "");
-  const fcp = formatMetric(pagespeed?.fcp, "s");
-  const tbt = formatMetric(pagespeed?.tbt, "ms");
+  const score =
+    pagespeed?.performanceScore ??
+    pagespeed?.performance_score ??
+    pagespeed?.score ??
+    null;
 
-  const lcpStatus = getStatus(pagespeed?.lcp, 2.5, 4.0);
-  const clsStatus = getStatus(pagespeed?.cls, 0.1, 0.25);
-  const fcpStatus = getStatus(pagespeed?.fcp, 1.8, 3.0);
-  const tbtStatus = getStatus(pagespeed?.tbt, 200, 600);
+  const rawLcp = pagespeed?.lcp ?? pagespeed?.largest_contentful_paint;
+  const rawCls = pagespeed?.cls ?? pagespeed?.cumulative_layout_shift;
+  const rawFcp = pagespeed?.fcp ?? pagespeed?.first_contentful_paint;
+  const rawTbt = pagespeed?.tbt ?? pagespeed?.total_blocking_time;
+
+  const lcp = formatMetric(rawLcp, "s");
+  const cls = formatMetric(rawCls, "");
+  const fcp = formatMetric(rawFcp, "s");
+  const tbt = formatMetric(rawTbt, "ms");
+
+  const lcpStatus = getStatus(rawLcp, 2.5, 4.0);
+  const clsStatus = getStatus(rawCls, 0.1, 0.25);
+  const fcpStatus = getStatus(rawFcp, 1.8, 3.0);
+  const tbtStatus = getStatus(rawTbt, 200, 600);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">

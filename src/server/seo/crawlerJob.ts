@@ -46,6 +46,29 @@ export const crawlWebsiteJob: CrawlWebsiteJob<
     const parsed = parseCrawlResults(lastCrawlData);
     console.log(`[CrawlWebsiteJob] Parsed ${parsed.pages.length} pages and ${parsed.issues.length} issues. Score: ${parsed.seoScore}`);
 
+    const issueRecords = [
+      ...parsed.issues.map((issue) => ({
+        analysisId,
+        type: issue.type ?? "unknown",
+        severity: issue.severity ?? null,
+        message: issue.message ?? null,
+        url: issue.url ?? null,
+        details: issue as any,
+      })),
+      ...(parsed.pagespeed ?
+        [
+          {
+            analysisId,
+            type: "pagespeed_summary",
+            severity: "info",
+            message: "Core Web Vitals & PageSpeed Insights Summary",
+            url: null,
+            details: parsed.pagespeed as any,
+          }
+        ]
+        : [])
+    ]
+
     // Atomically save pages, issues, and completed analysis status
     await prisma.$transaction([
       context.entities.SEOPage.deleteMany({ where: { analysisId } }),
@@ -71,17 +94,10 @@ export const crawlWebsiteJob: CrawlWebsiteJob<
             }),
           ]
         : []),
-      ...(parsed.issues.length > 0
+      ...(issueRecords.length > 0//parsed.issues.length > 0
         ? [
             context.entities.SEOIssue.createMany({
-              data: parsed.issues.map((issue) => ({
-                analysisId,
-                type: issue.type ?? "unknown",
-                severity: issue.severity ?? null,
-                message: issue.message ?? null,
-                url: issue.url ?? null,
-                details: issue as any,
-              })),
+              data: issueRecords
             }),
           ]
         : []),

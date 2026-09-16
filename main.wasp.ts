@@ -30,6 +30,8 @@ import { AuditListPage } from "./src/seo/audits/AuditListPage.tsx" with { type: 
 import { AuditViewPage } from "./src/seo/audits/AuditViewPage.tsx" with { type: "ref" }
 import { GSCImportPage } from "./src/onboarding/gsc/GSCImport.tsx" with { type : "ref" }
 import { ViewSEOPlanPage } from "./src/seo/dashboard/components/ViewSEOPlanPage.tsx" with { type : "ref" }
+import { NewArticlePage } from "./src/content/ArticlePage.tsx" with { type : "ref" }
+
 
 
 export default app({
@@ -108,6 +110,10 @@ export default app({
     route("ViewSEOPlanRoute",
       "/view-seo-plan",
       page(ViewSEOPlanPage, {authRequired: true})
+    ),
+    route("NewArticleRoute",
+      "/generate",
+      page(NewArticlePage, {authRequired: true})
     ),
     authSpec,
     userSpec,

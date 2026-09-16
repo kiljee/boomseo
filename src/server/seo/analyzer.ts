@@ -62,10 +62,27 @@ export function parseCrawlResults(crawl: any) {
 	const issues: LibreCrawlIssue[] = Array.isArray(crawl.issues) ? crawl.issues : [];
 
 
+	const pageSpeedRaw = 
+		crawl.pagespeed ??
+		crawl.stats?.pagespeed ??
+		crawl.urls?.find((u: any) => u.pagespeed || u.lcp || u.performance_score)?.pagespeed ??
+		crawl.urls?.[0]?.pagespeed ??
+		null;
+
+	const pagespeed = pageSpeedRaw ? {
+		performanceScore: pageSpeedRaw.score ?? pageSpeedRaw.performance_score ?? pageSpeedRaw.performanceScore ?? null,
+
+		lcp: pageSpeedRaw.lcp ?? pageSpeedRaw.largest_contentful_paint ?? null,
+		cls: pageSpeedRaw.cls ?? pageSpeedRaw.cumulative_layout_shift ?? null,
+		fcp: pageSpeedRaw.fcp ?? pageSpeedRaw.first_contentful_paint ?? null,
+		tbt: pageSpeedRaw.tbt ?? pageSpeedRaw.total_blocking_time ?? null,
+	} 
+	: null;
+
 	return {
 		pages,
 		issues,
-
+		pagespeed,
 		stats: {
 			crawled:
 				crawl.stats?.crawled ?? pages.length,

@@ -27,6 +27,7 @@ import {
   Globe,
   Search,
   TrendingUp,
+  FileText
 } from "lucide-react";
 
 export function DashboardPage() {
@@ -219,6 +220,19 @@ console.log("WEBSITE URL:", organization.websiteUrl);
         )
       : null;
 
+  const latestPagespeedData =
+    analysisStatus?.pagespeed ??
+    (latestAudit?.issues as any[])?.find(
+      (i: any) => i.type === "pagespeed_summary"
+    )?.details ??
+    (latestAudit?.issues as any[])?.find(
+      (i: any) =>
+        i.details?.pagespeed ||
+        i.details?.lcp ||
+        i.details?.performanceScore
+    )?.details?.pagespeed ??
+    null;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -330,7 +344,7 @@ console.log("WEBSITE URL:", organization.websiteUrl);
 
         {/* Core Web Vitals */}
         <div className="mt-6">
-          <CoreWebVitalsCard pagespeed={analysisStatus?.pagespeed} />
+          <CoreWebVitalsCard pagespeed={latestPagespeedData} />
         </div>
 
         {/* Lower */}

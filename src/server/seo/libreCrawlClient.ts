@@ -162,7 +162,7 @@ export async function saveLibreCrawlSettings() {
         follow_redirects: true,
         crawl_external: false,
 
-        enable_pagespeed: true,
+        enable_pagespeed: false,
         google_api_key: process.env.GOOGLE_PSI_API_KEY ?? "",
 
         enable_javascript: true,
