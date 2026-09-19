@@ -7,12 +7,14 @@ import {
 type Props = {
   onRunAudit: () => void;
   onViewPlan: () => void;
+  onGenerate: () => void;
   disabled?: boolean;
 };
 
 export function QuickActions({
   onRunAudit,
   onViewPlan,
+  onGenerate,
   disabled,
 }: Props) {
   return (
@@ -30,10 +32,16 @@ export function QuickActions({
           disabled={disabled}
         />
 
-        <Action
+        {/*<Action
           icon={<Search />}
           title="Track Keywords"
           description="Add keywords and monitor rankings."
+        />*/}
+        <Action
+          icon={<FileSearch />}
+          title="Generate content"
+          onClick={onGenerate}
+          description="Create new SEO content"
         />
 
         <Action
@@ -42,6 +50,10 @@ export function QuickActions({
           onClick={onViewPlan}
           description="View detailed SEO plan."
         />
+
+        
+
+
       </div>
     </div>
   );

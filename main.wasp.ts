@@ -30,9 +30,9 @@ import { AuditListPage } from "./src/seo/audits/AuditListPage.tsx" with { type: 
 import { AuditViewPage } from "./src/seo/audits/AuditViewPage.tsx" with { type: "ref" }
 import { GSCImportPage } from "./src/onboarding/gsc/GSCImport.tsx" with { type : "ref" }
 import { ViewSEOPlanPage } from "./src/seo/dashboard/components/ViewSEOPlanPage.tsx" with { type : "ref" }
-import { NewArticlePage } from "./src/content/ArticlePage.tsx" with { type : "ref" }
-
-
+//import { NewArticlePage } from "./src/content/ArticlePage.tsx" with { type : "ref" }
+import { contentSpec } from "./src/content/content.wasp";
+import { WorkspaceBlogPostsPage } from "./src/content/WorkspaceBlogPostsPage.tsx" with {type: "ref"};
 
 export default app({
   name: "OpenSaaS",
@@ -113,7 +113,7 @@ export default app({
     ),
     route("NewArticleRoute",
       "/generate",
-      page(NewArticlePage, {authRequired: true})
+      page(WorkspaceBlogPostsPage, {authRequired: true})
     ),
     authSpec,
     userSpec,
@@ -123,6 +123,7 @@ export default app({
     analyticsSpec,
     adminSpec,
     organizationSpec,
-    analysisSpec
+    analysisSpec,
+    contentSpec
   ],
 });

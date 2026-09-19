@@ -132,7 +132,9 @@ export function DashboardPage() {
     navigate(routes.ViewSEOPlanRoute.to);
   }
 
-  
+  async function handleGenerate() {
+    navigate(routes.NewArticleRoute.to);
+  }
 
   async function handleLeaveWorkspace() {
     if (
@@ -358,6 +360,7 @@ console.log("WEBSITE URL:", organization.websiteUrl);
           <QuickActions
             onRunAudit={handleStartAnalysis}
             onViewPlan={handleViewPlan}
+            onGenerate={handleGenerate}
             disabled={starting || isRunning}
           />
         </div>
