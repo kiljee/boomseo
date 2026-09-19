@@ -366,16 +366,24 @@ export function WorkspacesPage() {
                           px-4 py-2.5
                           text-sm font-semibold
                           transition
-                          ${
+    
+                            border border-border bg-background text-foreground hover:bg-muted
+                        `}
+                      >
+
+                        {/*${
                             isCurrent
                               ? "cursor-default bg-muted text-muted-foreground"
                               : "border border-border bg-background text-foreground hover:bg-muted"
                           }
-                        `}
-                      >
-                        {isCurrent
+                        */}
+
+                        {/*{isCurrent
                           ? "Current Workspace"
-                          : "Switch to Workspace →"}
+                          : "Switch to Workspace →"*/}
+
+
+                        {"Open workspace →"}
                       </button>
                     </div>
 
