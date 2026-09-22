@@ -126,3 +126,98 @@ export const deleteSEOArticle = async(
 		where: { id: args.articleId },
 	});
 }
+
+export const getSEOArticle = async (
+	{ id } : { id: string},
+	context: any
+) => {
+	if(!context.user) {
+		throw new Error("Not authenticated");
+	}
+
+	const organizationId = context.user.activeOrganizationId;
+
+	if(!organizationId) {
+		throw new Error("No active organization");
+	}
+
+	const article = await context.entities.SEOArticle.findFirst({
+		where: {
+			id,
+			organizationId,
+		},
+		include: {
+			keyword: true,
+		},
+	});
+
+	if(!article) {
+		throw new Error("Article not found");
+	}
+
+
+	return article;
+}
+
+export const updateSEOArticle = async (
+	{
+		id,
+		title,
+		metaTitle,
+		metaDescription,
+		slug,
+		content
+	}: {
+		id: string;
+		title: string;
+		metaTitle: string;
+		metaDescription: string;
+		slug: string;
+		content: string;
+	}
+	,
+	context: any
+) => {
+	if(!context.user) {
+		throw new Error("Not authenticated");
+	}
+
+	const organizationId = context.user.activeOrganizationId;
+
+	if(!organizationId) {
+		throw new Error("No active organization");
+	}
+
+	const article = await context.entities.SEOArticle.findFirst({
+		where: {
+			id,
+			organizationId,
+		},
+	});
+
+	if(!article) {
+		throw new Error("Article not found");
+	}
+
+	const wordCount = content
+			.replace(/[#>*_`~[\]()]/g, ' ')
+			.replace(/\s+/g, ' ')
+			.trim()
+			.split(' ')
+			.filter(Boolean).length;
+
+
+	return context.entities.SEOArticle.update({
+		where: {
+			id,
+		},
+		data: {
+			title,
+			metaTitle,
+			metaDescription,
+			slug,
+			content,
+			wordCount,
+		},
+	});
+}

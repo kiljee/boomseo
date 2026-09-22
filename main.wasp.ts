@@ -33,6 +33,7 @@ import { ViewSEOPlanPage } from "./src/seo/dashboard/components/ViewSEOPlanPage.
 //import { NewArticlePage } from "./src/content/ArticlePage.tsx" with { type : "ref" }
 import { contentSpec } from "./src/content/content.wasp";
 import { WorkspaceBlogPostsPage } from "./src/content/WorkspaceBlogPostsPage.tsx" with {type: "ref"};
+import { SEOArticlePage } from "./src/content/SEOArticlePage.tsx" with { type: "ref"}
 
 export default app({
   name: "OpenSaaS",
@@ -114,6 +115,10 @@ export default app({
     route("NewArticleRoute",
       "/generate",
       page(WorkspaceBlogPostsPage, {authRequired: true})
+    ),
+    route("ViewArticleRoute",
+      "/article/:articleId",
+      page(SEOArticlePage, {authRequired: true})
     ),
     authSpec,
     userSpec,

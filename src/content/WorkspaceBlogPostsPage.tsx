@@ -21,6 +21,8 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { Link, routes } from "wasp/client/router";
+
 export function WorkspaceBlogPostsPage() {
 
   const { data: articles, isLoading, refetch } = useQuery(getWorkspaceArticles);
@@ -538,7 +540,7 @@ export function WorkspaceBlogPostsPage() {
           </button>
 
           {/* New article */}
-          <button
+          {/*<button
             onClick={() => {
               setSelectedArticle(null);
               setShowGenerator(true);
@@ -549,6 +551,19 @@ export function WorkspaceBlogPostsPage() {
           >
             <Plus className="h-4 w-4" />
             New article
+          </button>*/}
+
+
+          <button>
+            <Link
+              to="/article/:articleId"
+              params= {{ articleId: selectedArticle.id} }
+               className="inline-flex items-center gap-2 rounded-xl
+              border border-border bg-background px-3.5 py-2
+              text-sm font-medium transition hover:bg-muted"
+              >
+            {"Edit"}
+            </Link>
           </button>
 
         </div>
