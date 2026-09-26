@@ -69,6 +69,7 @@ model Organization {
 
   competitors Competitor[]
   seoPlan     SEOPlan?
+  contentResearches ContentResearch[]
 }
 
 enum Role {
@@ -272,6 +273,7 @@ model SEOKeyword {
   )
 
   articles        SEOArticle[]
+  contentResearches ContentResearch[]
 
   @@index([organizationId])
 }
@@ -309,6 +311,59 @@ model SEOArticle {
 
   @@index([organizationId])
   @@index([keywordId])
+}
+
+model CrawledPage {
+  id              String @id @default(uuid())
+  url             String @unique
+
+  title           String?
+  metaDescription String?
+  headings        Json?
+  text            String?
+  wordCount       Int?
+
+  crawledAt       DateTime @default(now())
+  expiresAt       DateTime
+
+  @@index([expiresAt])
+}
+
+model ContentResearch {
+  id               String  @id @default(uuid())
+  organizationId   String
+  keywordId        String
+
+  status           ContentResearchStatus @default(PENDING)
+
+  serpResults        Json?
+  competitorPages    Json?
+  wdfIdfAnalysis     Json?
+  contentGaps        Json?
+  recommendedOutline Json?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organization       Organization @relation(
+      fields: [organizationId],
+      references: [id]
+  )
+
+  keyword             SEOKeyword @relation(
+      fields: [keywordId],
+      references: [id]
+  )
+
+  @@index([organizationId])
+  @@index([keywordId])
+}
+
+enum ContentResearchStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
 }
 
 
