@@ -34,6 +34,7 @@ import { ViewSEOPlanPage } from "./src/seo/dashboard/components/ViewSEOPlanPage.
 import { contentSpec } from "./src/content/content.wasp";
 import { WorkspaceBlogPostsPage } from "./src/content/WorkspaceBlogPostsPage.tsx" with {type: "ref"};
 import { SEOArticlePage } from "./src/content/SEOArticlePage.tsx" with { type: "ref"}
+import { researchAnalysisSpec } from "./src/seo/services/researchAnalysis.wasp";
 
 export default app({
   name: "OpenSaaS",
@@ -120,6 +121,7 @@ export default app({
       "/article/:articleId",
       page(SEOArticlePage, {authRequired: true})
     ),
+    researchAnalysisSpec,
     authSpec,
     userSpec,
     demoAiAppSpec,

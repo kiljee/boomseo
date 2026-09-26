@@ -1,17 +1,37 @@
-import { getSiteInventory, getOrCrawlSiteInventory } from './sitemapService';
+/*import { searchDuckDuckGo } from './searchEngineService';
+import { filterSERPResults } from './searchEngineService';
+import { crawlCompetitorPages } from './competitorResearch';
+import { analyzeCompetitorContent } from './competitorResearch';
 
-async function runTest() {
-  const targetDomain = process.argv[2] || 'example.com';
+export async function testCompetitorResearch() {
+  const keyword = 'best seo tools';
 
-  console.log(`\n--- Testing getSiteInventory for: ${targetDomain} ---`);
-  const results = await getOrCrawlSiteInventory(targetDomain);
+  console.log(`Searching SERP for: "${keyword}"`);
 
-  console.log(`\nFound ${results.length} URLs:`);
-  console.log(JSON.stringify(results.slice(0, 5), null, 2));
+  const serpResults = await searchDuckDuckGo(keyword, 10);
 
-  if (results.length > 5) {
-    console.log(`... and ${results.length - 5} more items.`);
-  }
+  console.log('SERP results:', serpResults);
+
+  const competitors = filterSERPResults(
+    serpResults
+  ).slice(0, 5);
+
+  console.log('Competitors:', competitors);
+
+  const pages = await crawlCompetitorPages(
+    competitors
+  );
+
+  console.log('Crawled pages:', pages);
+
+  const analysis = analyzeCompetitorContent(
+    pages,
+    keyword
+  );
+
+  console.log('Analysis:', analysis);
+
+  return analysis;
 }
 
-runTest();
+await testCompetitorResearch();*/
