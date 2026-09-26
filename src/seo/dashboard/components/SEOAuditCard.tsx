@@ -68,21 +68,24 @@ export function SEOAuditCard({
           </div>
         </div>
 
-        {!running && (
-          <button
-            onClick={onStart}
-            disabled={starting}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-          >
-            <Play className="h-4 w-4" />
 
-            {starting
-              ? "Running..."
-              : completed
-                ? "Run Again"
-                : "Run SEO Audit"}
-          </button>
-        )}
+    
+
+              {!running && (
+        <button
+          onClick={onStart}
+          disabled={starting}
+          className="cta-button inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+        >
+          <Play className="h-4 w-4" />
+
+          {starting
+            ? "Running..."
+            : completed
+              ? "Run Again"
+              : "Run SEO Audit"}
+        </button>
+      )}
       </div>
 
       {running && (

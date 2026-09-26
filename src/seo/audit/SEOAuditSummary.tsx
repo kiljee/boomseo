@@ -4,7 +4,11 @@ import {
   FileSearch,
   Globe,
   Zap,
+  Search,
+  TrendingUp
 } from "lucide-react";
+
+import { MetricCard } from "../dashboard/components/MetricCard";
 
 type Props = {
   audit: any;
@@ -24,35 +28,68 @@ export function SEOAuditSummary({ audit }: Props) {
       : null;
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <AuditStat
-        icon={<Activity className="h-5 w-5" />}
-        label="SEO Score"
-        value={
-          audit.seoScore != null
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+              title="SEO Health"
+              value={
+                audit.seoScore != null
             ? `${Math.round(audit.seoScore)}/100`
             : "—"
-        }
-      />
+              }
+              description={
+                  ""
+              }
+              icon={<Activity className="h-5 w-5" />}
+              status={
+                audit.seoScore == null
+                  ? undefined
+                  : audit.seoScore >= 80
+                    ? "good"
+                    : audit.seoScore >= 50
+                      ? "warning"
+                      : "bad"
+              }
+            />
 
-      <AuditStat
-        icon={<Globe className="h-5 w-5" />}
-        label="Pages Crawled"
-        value={String(pages)}
-      />
+          <MetricCard
+            title="Pages Crawled"
+            value={String(pages)}
+            description={
+              "Pages analyzed"
+            }
+            icon={<Globe className="h-5 w-5" />}
+          />
 
-      <AuditStat
-        icon={<AlertTriangle className="h-5 w-5" />}
-        label="Issues"
-        value={String(issues)}
-      />
+          <MetricCard
+              title="SEO Issues"
+              value={String(issues)}
+              description="Issues found"
+              icon={<AlertTriangle className="h-5 w-5" />}
+              status={
+                issues === 0
+                  ? "good"
+                  : issues <= 15
+                    ? "warning"
+                    : "bad"
+              }
+            />
 
-      <AuditStat
-        icon={<Zap className="h-5 w-5" />}
-        label="Avg Response Time"
-        value={avgSpeed != null ? `${avgSpeed} ms` : "—"}
-      />
-    </div>
+          <MetricCard
+              title="Avg Response Time"
+              value={avgSpeed != null ? `${avgSpeed} ms` : "—"}
+              description={"Avg page response time"}
+              icon={<TrendingUp className="h-5 w-5" />}
+              status={
+                avgSpeed == null
+                  ? undefined
+                  : avgSpeed < 500
+                    ? "good"
+                    : avgSpeed < 1000
+                      ? "warning"
+                      : "bad"
+              }
+            />
+        </div>
   );
 }
 

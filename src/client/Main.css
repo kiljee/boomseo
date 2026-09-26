@@ -330,3 +330,70 @@
 .apexcharts-xaxistooltip-bottom:before {
   @apply dark:border-b-muted!;
 }
+
+
+/*Button classes*/
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.cta-button {
+  position: relative;
+  isolation: isolate;
+}
+.cta-button::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1.5px;
+
+  background: conic-gradient(
+    from var(--angle),
+    #4285f4,
+    #9b72cb,
+    #d96570,
+    #fbbc04,
+    #4285f4
+  );
+
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+
+  animation: cta-border-spin 3s linear infinite;
+  pointer-events: none;
+}
+
+.cta-button::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  z-index: -1;
+
+  background: conic-gradient(
+    from var(--angle),
+    #4285f4,
+    #9b72cb,
+    #d96570,
+    #fbbc04,
+    #4285f4
+  );
+
+  filter: blur(4px);
+  opacity: 0.3;
+
+  animation: cta-border-spin 3s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes cta-border-spin {
+  to {
+    --angle: 360deg;
+  }
+}

@@ -27,7 +27,9 @@ export function Hero() {
                 </WaspRouterLink>
               </Button>
               <Button size="lg" variant="default" asChild>
-                <WaspRouterLink to={routes.SignupRoute.to}>
+                <WaspRouterLink to={routes.DashboardRoute.to} className="cta-button inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+        >
+
                   Get Started <span aria-hidden="true">→</span>
                 </WaspRouterLink>
               </Button>

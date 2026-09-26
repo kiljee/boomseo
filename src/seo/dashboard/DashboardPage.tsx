@@ -276,19 +276,28 @@ console.log("WEBSITE URL:", organization.websiteUrl);
         {/* KPI */}
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
-            title="SEO Health"
-            value={
-              dashboardStats.score != null
-                ? `${dashboardStats.score}`
-                : "-"
-            }
-            description={
-              dashboardStats.score != null
-                ? "Latest SEO score"
-                : "Run your first audit"
-            }
-            icon={<Activity className="h-5 w-5" />}
-          />
+              title="SEO Health"
+              value={
+                dashboardStats.score != null
+                  ? `${dashboardStats.score}`
+                  : "-"
+              }
+              description={
+                dashboardStats.score != null
+                  ? "Latest SEO score"
+                  : "Run your first audit"
+              }
+              icon={<Activity className="h-5 w-5" />}
+              status={
+                dashboardStats.score == null
+                  ? undefined
+                  : dashboardStats.score >= 80
+                    ? "good"
+                    : dashboardStats.score >= 50
+                      ? "warning"
+                      : "bad"
+              }
+            />
 
           <MetricCard
             title="Pages Crawled"
@@ -302,26 +311,42 @@ console.log("WEBSITE URL:", organization.websiteUrl);
           />
 
           <MetricCard
-            title="SEO Issues"
-            value={`${dashboardStats.issues}`}
-            description="Issues found"
-            icon={<Search className="h-5 w-5" />}
-          />
+              title="SEO Issues"
+              value={`${dashboardStats.issues}`}
+              description="Issues found"
+              icon={<Search className="h-5 w-5" />}
+              status={
+                dashboardStats.issues === 0
+                  ? "good"
+                  : dashboardStats.issues <= 15
+                    ? "warning"
+                    : "bad"
+              }
+            />
 
           <MetricCard
-            title="Avg Response Time"
-            value={
-              isRunning
-                ? dashboardStats.speed != null
-                  ? `${dashboardStats.speed.toFixed(1)} p/s`
-                  : "-"
-                : avgResponseMs != null
-                ? `${avgResponseMs} ms`
-                : "-"
-            }
-            description={isRunning ? "Pages per second" : "Avg page response time"}
-            icon={<TrendingUp className="h-5 w-5" />}
-          />
+              title="Avg Response Time"
+              value={
+                isRunning
+                  ? dashboardStats.speed != null
+                    ? `${dashboardStats.speed.toFixed(1)} p/s`
+                    : "-"
+                  : avgResponseMs != null
+                    ? `${avgResponseMs} ms`
+                    : "-"
+              }
+              description={isRunning ? "Pages per second" : "Avg page response time"}
+              icon={<TrendingUp className="h-5 w-5" />}
+              status={
+                avgResponseMs == null
+                  ? undefined
+                  : avgResponseMs < 500
+                    ? "good"
+                    : avgResponseMs < 1000
+                      ? "warning"
+                      : "bad"
+              }
+            />
         </div>
 
         {/* Audit */}

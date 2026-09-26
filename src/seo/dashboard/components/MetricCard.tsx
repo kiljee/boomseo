@@ -1,10 +1,13 @@
 import type { ReactNode } from "react";
 
+type Status = "good" | "warning" | "bad";
+
 type Props = {
   title: string;
   value: string | number;
   description: string;
   icon: ReactNode;
+  status?: Status;
 };
 
 export function MetricCard({
@@ -12,9 +15,20 @@ export function MetricCard({
   value,
   description,
   icon,
+  status,
 }: Props) {
+  const statusClasses = {
+    good: "border-green-500/50",
+    warning: "border-orange-500/50",
+    bad: "border-red-500/50",
+  };
+
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+    <div
+      className={`rounded-2xl border bg-card p-5 shadow-sm ${
+        status ? statusClasses[status] : "border-border"
+      }`}
+    >
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
           {title}
