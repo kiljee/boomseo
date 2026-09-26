@@ -6,8 +6,8 @@ type ArticleOutlineProps = {
 };
 
 type OutlineItem = {
-  heading?: string;
-  level?: number;
+  title?: string;
+  level?: string;
 };
 
 type ContentBrief = {
@@ -49,8 +49,11 @@ export function ArticleOutline({
 
       <div className="space-y-1">
                 {outline.map((item, index) => {
-          const heading = item.heading ?? '';
-          const level = item.level ?? 2;
+          const heading = item.title ?? '';
+          const level = parseInt(
+            (item.level ?? 'h2').replace('h', ''),
+            10
+          );
 
           const covered = isHeadingCovered(heading, content);
 
@@ -97,7 +100,7 @@ export function ArticleOutline({
           <span className="font-medium text-foreground">
             {
               outline.filter((item) =>
-                isHeadingCovered(item.heading ?? '', content)
+                isHeadingCovered(item.title ?? '', content)
               ).length
             }{' '}
             / {outline.length}

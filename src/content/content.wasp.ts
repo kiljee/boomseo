@@ -1,5 +1,5 @@
 import { action, query, job, type Spec } from "@wasp.sh/spec";
-import { getWorkspaceArticles, generateSEOArticle, deleteSEOArticle, getSEOArticle, updateSEOArticle } from "./operations" with {type: "ref"};
+import { getWorkspaceArticles, generateSEOArticle, deleteSEOArticle, getSEOArticle, updateSEOArticle, getRandomGSCKeyword } from "./operations" with {type: "ref"};
 import { generateSEOArticleJob } from "./generateSEOArticleJob" with { type: "ref" };
 
 
@@ -12,12 +12,16 @@ export const contentSpec: Spec = [
 		entities: ["SEOArticle", "SEOKeyword"],
 	}),
 
+	query(getRandomGSCKeyword, {
+  		entities: ["GSCQuery"],
+	}),
+
 	action(updateSEOArticle, {
 		entities: ["SEOArticle"]
 	}),
 
 	action(generateSEOArticle, {
-		entities: ["Organization", "Competitor", "SEOKeyword", "SEOArticle"],
+		entities: ["Organization", "Competitor", "SEOKeyword", "SEOArticle", "ContentResearch"],
 	}),
 
 	action(deleteSEOArticle, {
@@ -26,6 +30,6 @@ export const contentSpec: Spec = [
 
 	job(generateSEOArticleJob, {
 		executor: "PgBoss",
-		entities: ["Organization", "Competitor", "SEOKeyword", "SEOArticle"]
+		entities: ["Organization", "Competitor", "SEOKeyword", "SEOArticle", "ContentResearch", "CrawledPage"]
 	}),
 ];

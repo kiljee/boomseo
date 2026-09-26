@@ -5,8 +5,10 @@ import { useQuery, useAction } from "wasp/client/operations";
 import {
   getWorkspaceArticles,
   generateSEOArticle,
-  deleteSEOArticle
+  deleteSEOArticle,
+  getRandomGSCKeyword
 } from "wasp/client/operations";
+
 import { exportArticleAsMarkdown, exportArticleAsHTML, exportArticleAsJSON } from "./exportUtils";
 
 import {
@@ -19,6 +21,7 @@ import {
   ArrowRight,
   Download,
   Trash2,
+  Search
 } from "lucide-react";
 
 import { Link, routes } from "wasp/client/router";
@@ -30,14 +33,22 @@ export function WorkspaceBlogPostsPage() {
   const generateArticleFn = useAction(generateSEOArticle);
   const deleteArticleFn = useAction(deleteSEOArticle);
 
+    const {
+        data: randomKeyword,
+        refetch: refetchRandomKeyword,
+    } = useQuery(getRandomGSCKeyword);
+
+
   const [keywordInput, setKeywordInput] = useState("");
   const [tone, setTone] = useState("Professional");
+  const [model, setModel] = useState("gpt-6-luna");
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState<any | null>(null);
   const [showGenerator, setShowGenerator] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [articleToDelete, setArticleToDelete] = useState<any | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
       if (!selectedArticle) return;
@@ -69,6 +80,18 @@ export function WorkspaceBlogPostsPage() {
   return () => clearInterval(interval);
 }, [hasGeneratingArticle, refetch]);
 
+
+  const filteredArticles = articles?.filter((article: any) => {
+      const query = searchQuery.toLowerCase().trim();
+
+      if (!query) return true;
+
+      return (
+        article.title?.toLowerCase().includes(query) ||
+        article.keyword?.keyword?.toLowerCase().includes(query)
+      );
+    });
+
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -80,6 +103,7 @@ export function WorkspaceBlogPostsPage() {
       const article = await generateArticleFn({
         targetKeyword: keywordInput,
         tone,
+        model
       });
 
       setKeywordInput("");
@@ -119,9 +143,18 @@ export function WorkspaceBlogPostsPage() {
     }
   };
 
+
+  const handleSuggestKeyword = async () => {
+    const result = await refetchRandomKeyword();
+
+    if (result.data) {
+      setKeywordInput(result.data);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <main className="mx-auto flex max-w-7xl px-4 sm:px-6 lg:px-8">
+      <main className="mx-auto flex max-w-7xl px-0">
 
         {/* =====================================================
             LEFT SIDEBAR
@@ -131,39 +164,61 @@ export function WorkspaceBlogPostsPage() {
 
           {/* Sidebar header */}
           <div className="py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-lg font-semibold tracking-tight">
-                  Blog Posts
-                </h1>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-lg font-semibold tracking-tight">
+                    Blog Posts
+                  </h1>
 
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Create and manage SEO content
-                </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Create and manage SEO content
+                  </p>
+                </div>
+
+                {articles && (
+                  <span className="rounded-full bg-muted px-2.5 py-1 text-xs
+                    font-medium text-muted-foreground">
+                    {articles.length}
+                  </span>
+                )}
               </div>
 
-              {articles && (
-                <span className="rounded-full bg-muted px-2.5 py-1 text-xs
-                  font-medium text-muted-foreground">
-                  {articles.length}
-                </span>
-              )}
-            </div>
+              {/* Search */}
+              <div className="relative mt-5">
+                <Search
+                  className="absolute left-3 top-1/2 h-4 w-4
+                    -translate-y-1/2 text-muted-foreground"
+                />
 
-            <button
-              onClick={() => {
-                setSelectedArticle(null);
-                setShowGenerator(true);
-              }}
-              className="mt-5 inline-flex w-full items-center justify-center
-                gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm
-                font-semibold text-primary-foreground shadow-sm
-                transition hover:bg-primary/90"
-            >
-              <Plus className="h-4 w-4" />
-              New article
-            </button>
-          </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search articles..."
+                  className="w-full rounded-xl border border-border
+                    bg-background py-2 pl-9 pr-3 text-sm
+                    text-foreground outline-none
+                    placeholder:text-muted-foreground
+                    focus:border-primary/40 focus:outline-none
+                    focus:ring-0"
+                />
+              </div>
+
+              {/* New article */}
+              <button
+                onClick={() => {
+                  setSelectedArticle(null);
+                  setShowGenerator(true);
+                }}
+                className="mt-3 inline-flex w-full items-center justify-center
+                  gap-2 rounded-xl border border-border bg-background
+                  px-4 py-2 text-sm font-medium text-foreground
+                  transition hover:bg-muted"
+              >
+                <Plus className="h-4 w-4" />
+                New article
+              </button>
+            </div>
 
           <div className="h-px bg-border" />
 
@@ -193,7 +248,7 @@ export function WorkspaceBlogPostsPage() {
               </div>
             ) : (
               <div className="space-y-1">
-                {articles.map((article: any) => {
+                {filteredArticles.map((article: any) => {
                   const isSelected =
                     selectedArticle?.id === article.id;
 
@@ -281,168 +336,184 @@ export function WorkspaceBlogPostsPage() {
           {/* ===================================================
               GENERATOR
           ==================================================== */}
-          {showGenerator ? (
-            <div className="mx-auto max-w-3xl px-6 py-10 lg:px-10">
 
-              <div className="mb-8">
+  {showGenerator ? (
+  <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-6 py-12">
+    <div className="w-full max-w-3xl">
 
-                <div className="mb-3 inline-flex items-center gap-1.5
-                  rounded-full bg-primary/10 px-2.5 py-1 text-xs
-                  font-semibold text-primary">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  AI Content
-                </div>
+      {/* Header */}
+      <div className="mb-10 text-center">
 
-                <h2 className="text-3xl font-bold tracking-tight">
-                  Create a new SEO article
-                </h2>
+        <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          What do you want to write about?
+        </h2>
 
-                <p className="mt-2 max-w-2xl text-sm
-                  text-muted-foreground">
-                  Analyze competitor content gaps and generate a
-                  comprehensive article optimized for your target keyword.
-                </p>
+        <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground">
+          Enter a target keyword and we'll research competitors,
+          identify content gaps, and create an SEO-optimized article.
+        </p>
+      </div>
+
+      {/* Composer */}
+      <form onSubmit={handleGenerate}>
+        <div
+          className="rounded-3xl border border-border bg-card
+            p-3 shadow-sm transition
+            focus-within:border-primary/50
+            focus-within:shadow-md"
+        >
+          {/* Main input */}
+          <textarea
+            value={keywordInput}
+            onChange={(e) => setKeywordInput(e.target.value)}
+            placeholder="What should your article be about?"
+            disabled={isGenerating}
+            rows={2}
+            className="w-full resize-none border-0 bg-transparent
+              px-3 py-2 text-base text-foreground
+              outline-none placeholder:text-muted-foreground
+              disabled:cursor-not-allowed disabled:opacity-50
+              focus:border-0 focus:outline-none focus:ring-0"
+          />
+
+          {/* Composer footer */}
+          <div className="mt-2 flex items-center justify-between gap-3">
+
+            {/* Options */}
+            <div className="flex items-center gap-2">
+
+              <div className="flex items-center gap-2 rounded-xl
+                border border-border bg-muted/40 px-3 py-2">
+
+                <span className="text-xs text-muted-foreground">
+                  Tone
+                </span>
+
+                <select
+                  value={tone}
+                  onChange={(e) => setTone(e.target.value)}
+                  disabled={isGenerating}
+                  className="bg-transparent text-xs font-medium
+                    text-foreground border-0 outline-none
+                    focus:border-0 focus:outline-none focus:ring-0"
+                >
+                  <option value="Professional">
+                    Professional
+                  </option>
+                  <option value="Casual">
+                    Casual
+                  </option>
+                  <option value="Technical">
+                    Technical
+                  </option>
+                </select>
               </div>
 
-              <div className="rounded-2xl border border-border bg-card
-                shadow-sm">
+              <div className="flex items-center gap-2 rounded-xl
+                border border-border bg-muted/40 px-3 py-2">
 
-                <div className="p-6 sm:p-8">
+                <span className="text-xs text-muted-foreground">
+                  Model
+                </span>
 
-                  <form
-                    onSubmit={handleGenerate}
-                    className="space-y-6"
-                  >
-
-                    {/* Keyword */}
-                    <div>
-                      <label className="mb-2 block text-sm font-semibold">
-                        Target keyword
-                      </label>
-
-                      <input
-                        type="text"
-                        value={keywordInput}
-                        onChange={(e) =>
-                          setKeywordInput(e.target.value)
-                        }
-                        placeholder="e.g. best email marketing tools"
-                        disabled={isGenerating}
-                        className="w-full rounded-xl border border-border
-                          bg-background px-4 py-3 text-sm
-                          text-foreground outline-none
-                          placeholder:text-muted-foreground
-                          transition
-                          focus:border-primary
-                          focus:ring-2 focus:ring-primary/20
-                          disabled:cursor-not-allowed
-                          disabled:opacity-50"
-                      />
-
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        The primary keyword this article will target.
-                      </p>
-                    </div>
-
-                    {/* Tone */}
-                    <div>
-                      <label className="mb-2 block text-sm font-semibold">
-                        Tone of voice
-                      </label>
-
-                      <select
-                        value={tone}
-                        onChange={(e) => setTone(e.target.value)}
-                        disabled={isGenerating}
-                        className="w-full rounded-xl border border-border
-                          bg-background px-4 py-3 text-sm
-                          text-foreground outline-none
-                          transition
-                          focus:border-primary
-                          focus:ring-2 focus:ring-primary/20
-                          disabled:cursor-not-allowed
-                          disabled:opacity-50"
-                      >
-                        <option value="Professional">
-                          Professional
-                        </option>
-                        <option value="Casual">
-                          Casual
-                        </option>
-                        <option value="Technical">
-                          Technical
-                        </option>
-                      </select>
-                    </div>
-
-                    {/* Process */}
-                    <div className="rounded-xl border border-border
-                      bg-muted/40 p-4">
-
-                      <p className="mb-3 text-sm font-semibold">
-                        Generation process
-                      </p>
-
-                      <div className="space-y-2.5">
-                        {[
-                          "Analyze competitor content",
-                          "Identify H1/H2 content gaps",
-                          "Create a recommended outline",
-                          "Generate the SEO article",
-                        ].map((step, index) => (
-                          <div
-                            key={step}
-                            className="flex items-center gap-3"
-                          >
-                            <div className="flex h-6 w-6 shrink-0
-                              items-center justify-center rounded-full
-                              border border-border bg-background
-                              text-xs font-medium"
-                            >
-                              {index + 1}
-                            </div>
-
-                            <span className="text-sm
-                              text-muted-foreground">
-                              {step}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Submit */}
-                    <button
-                      type="submit"
-                      disabled={
-                        isGenerating ||
-                        !keywordInput.trim()
-                      }
-                      className="inline-flex w-full items-center
-                        justify-center gap-2 rounded-xl bg-primary
-                        px-5 py-3 text-sm font-semibold
-                        text-primary-foreground shadow-sm
-                        transition hover:bg-primary/90
-                        disabled:cursor-not-allowed
-                        disabled:opacity-50"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Analyzing & generating...
-                        </>
-                      ) : (
-                        <>
-                          Generate SEO article
-                          <ArrowRight className="h-4 w-4" />
-                        </>
-                      )}
-                    </button>
-
-                  </form>
-                </div>
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  disabled={isGenerating}
+                  className="bg-transparent text-xs font-medium
+                    text-foreground border-0 outline-none
+                    focus:border-0 focus:outline-none focus:ring-0 text-center"
+                >
+                  <option value="gpt-6-luna">
+                    GPT-6-Luna
+                  </option>
+                  <option value="gemini-3.8-flash">
+                    Gemini 3.8 Flash
+                  </option>
+                  <option value="gemini-3.8-flash">
+                    Gemini 3.6 Flash
+                  </option>
+                </select>
               </div>
+
+              <button
+                type="button"
+                disabled={isGenerating}
+                onClick={handleSuggestKeyword}
+                className="inline-flex items-center gap-1.5 rounded-xl
+                  border border-border bg-muted/40 px-3 py-2
+                  text-xs font-medium text-muted-foreground
+                  transition hover:bg-muted hover:text-foreground
+                  disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Suggest keyword
+              </button>
+
             </div>
+
+            {/* Generate */}
+            <button
+              type="submit"
+              disabled={
+                isGenerating ||
+                !keywordInput.trim()
+              }
+              className="cta-button inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating
+                </>
+              ) : (
+                <>
+                  Generate
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </button>
+
+          </div>
+        </div>
+
+      </form>
+
+      {/* Process */}
+      <div className="mt-8">
+        <p className="mb-4 text-center text-xs font-medium
+          text-muted-foreground">
+          Your article will be generated in four steps
+        </p>
+
+        <div className="flex flex-wrap items-center justify-center
+          gap-x-6 gap-y-3">
+          {[
+            "Analyze competitors",
+            "Find content gaps",
+            "Build outline",
+            "Generate article",
+          ].map((step, index) => (
+            <div
+              key={step}
+              className="flex items-center gap-2 text-xs
+                text-muted-foreground"
+            >
+              <span className="flex h-5 w-5 items-center justify-center
+                rounded-full bg-muted text-[10px] font-semibold
+                text-foreground"
+              >
+                {index + 1}
+              </span>
+
+              {step}
+            </div>
+          ))}
+        </div>
+      </div>
+
+    </div>
+  </div>
 
           ) : selectedArticle ? (
 
@@ -892,3 +963,31 @@ function ContentGaps({ article }: { article: any }) {
 
 
 }
+
+
+import { startContentResearch } from "wasp/client/operations";
+
+function TestResearchButton() {
+  const handleTest = async () => {
+    try {
+      const research = await startContentResearch({
+        keyword: "residential renovation contractor",
+      });
+
+      console.log("Research started:", research);
+    } catch (error) {
+      console.error("Research failed to start:", error);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleTest}
+      className="rounded-lg bg-primary px-4 py-2 text-primary-foreground"
+    >
+      Test Content Research
+    </button>
+  );
+}
+
+export default TestResearchButton;

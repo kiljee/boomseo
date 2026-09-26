@@ -1,7 +1,5 @@
 import OpenAI from "openai";
 import { env } from "wasp/server";
-import { analyzeContentGaps } from "../seo/services/contentGapService";
-
 const openAi = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
 /**
@@ -33,7 +31,7 @@ import { generateSEOArticleJob } from "wasp/server/jobs";
 
 
 export const generateSEOArticle = async (
-  args: { targetKeyword: string; tone?: string },
+  args: { targetKeyword: string; tone?: string, model?: string },
   context: any
 ) => {
 	  if (!context.user) {
@@ -82,11 +80,26 @@ export const generateSEOArticle = async (
 	  	},
 	  });
 
+	   // Create research
+	  const research = await context.entities.ContentResearch.create({
+	    data: {
+	      organization: {
+	        connect: { id: organizationId },
+	      },
+	      keyword: {
+	        connect: { id: keywordRecord.id },
+	      },
+	      status: 'PENDING',
+	    },
+	  });
+
 	  await generateSEOArticleJob.submit({
 	  	articleId: article.id,
 	  	keywordId: keywordRecord.id,
 	  	targetKeyword: args.targetKeyword,
 	  	tone: args.tone,
+	  	model: args.model ?? "gpt-5.6-sol",
+	  	researchId: research.id,
 	  	organizationId,
 	  });
 
@@ -221,3 +234,33 @@ export const updateSEOArticle = async (
 		},
 	});
 }
+
+export const getRandomGSCKeyword = async (_args: void, context: any) => {
+  if (!context.user) {
+    throw new Error('Not authenticated');
+  }
+
+  const organizationId = context.user.activeOrganizationId;
+
+  if (!organizationId) {
+    throw new Error('No active workspace selected');
+  }
+
+  const rows = await context.entities.GSCQuery.findMany({
+    where: {
+      import: {
+        organizationId,
+      },
+    },
+    select: {
+      query: true,
+    },
+    take: 100,
+  });
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return rows[Math.floor(Math.random() * rows.length)].query;
+};

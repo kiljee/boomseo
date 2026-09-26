@@ -20,8 +20,10 @@ type ContentBrief = {
 
 type WdfIdfTerm = {
   term: string;
-  articleWeight?: number;
-  competitorAverage?: number;
+  articleWeight: number;
+  competitorAverage: number;
+  difference: number;
+  competitors: number;
 };
 
 type WdfIdfAnalysis = {
@@ -71,6 +73,9 @@ export function SEOOverview({
     coveredTopics: coveredTopics.length,
     totalTopics: topics.length,
   });
+
+  console.log('SEO ARTICLE:', article);
+console.log('WDF-IDF:', article?.wdfIdfAnalysis);
 
   return (
     <div className="space-y-6">
@@ -193,73 +198,106 @@ export function SEOOverview({
       </section>
 
       {/* WDF-IDF */}
-      <section className="border-t border-border pt-5">
-        <SectionHeader
-          icon={TrendingUp}
-          title="WDF-IDF"
-          description="Compared with competitor content"
-        />
+<section className="border-t border-border pt-5">
+  <SectionHeader
+    icon={TrendingUp}
+    title="WDF-IDF"
+    description="Compared with competitor content"
+  />
 
-        {wdfIdfTerms.length === 0 ? (
-          <EmptyState text="No WDF-IDF analysis available yet." />
-        ) : (
-          <div className="mt-3 space-y-3">
-            {wdfIdfTerms.slice(0, 8).map((term) => {
-              const articleWeight = term.articleWeight ?? 0;
-              const competitorAverage = term.competitorAverage ?? 0;
+  {wdfIdfTerms.length === 0 ? (
+    <EmptyState text="No WDF-IDF analysis available yet." />
+  ) : (
+    <div className="mt-3 space-y-2">
+      {wdfIdfTerms.slice(0, 10).map((term) => {
+        const articleWeight = term.articleWeight;
+        const competitorAverage = term.competitorAverage;
+        const difference = term.difference;
 
-              const difference =
-                articleWeight - competitorAverage;
+        const maxWeight = Math.max(
+          articleWeight,
+          competitorAverage,
+          0.0001
+        );
 
-              return (
+        const articleWidth =
+          (articleWeight / maxWeight) * 100;
+
+        const competitorWidth =
+          (competitorAverage / maxWeight) * 100;
+
+        const isUnderused =
+          articleWeight < competitorAverage;
+
+        return (
+          <div
+            key={term.term}
+            className="rounded-lg border border-border p-3"
+          >
+            {/* Term + difference */}
+            <div className="flex items-center justify-between gap-3">
+              <span className="truncate text-xs font-medium text-foreground">
+                {term.term}
+              </span>
+
+              <span
+                className={`shrink-0 text-xs font-medium ${
+                  isUnderused
+                    ? 'text-orange-600 dark:text-orange-400'
+                    : 'text-green-600 dark:text-green-400'
+                }`}
+              >
+                {difference >= 0 ? '+' : ''}
+                {difference.toFixed(4)}
+              </span>
+            </div>
+
+            {/* Article */}
+            <div className="mt-2">
+              <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
+                <span>Article</span>
+                <span>{articleWeight.toFixed(4)}</span>
+              </div>
+
+              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                 <div
-                  key={term.term}
-                  className="space-y-1.5"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="truncate text-xs font-medium text-foreground">
-                      {term.term}
-                    </span>
+                  className="h-full rounded-full bg-primary"
+                  style={{
+                    width: `${articleWidth}%`,
+                  }}
+                />
+              </div>
+            </div>
 
-                    <span
-                      className={`shrink-0 text-xs ${
-                        difference >= 0
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-orange-600 dark:text-orange-400'
-                      }`}
-                    >
-                      {difference >= 0 ? '+' : ''}
-                      {difference.toFixed(2)}
-                    </span>
-                  </div>
+            {/* Competitors */}
+            <div className="mt-2">
+              <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">
+                <span>Competitors</span>
+                <span>
+                  {competitorAverage.toFixed(4)}
+                </span>
+              </div>
 
-                  <div className="flex h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="rounded-full bg-primary"
-                      style={{
-                        width: `${Math.min(
-                          Math.max(articleWeight * 100, 0),
-                          100
-                        )}%`,
-                      }}
-                    />
-                  </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-muted-foreground/40"
+                  style={{
+                    width: `${competitorWidth}%`,
+                  }}
+                />
+              </div>
+            </div>
 
-                  <div className="flex justify-between text-[10px] text-muted-foreground">
-                    <span>
-                      Article {articleWeight.toFixed(2)}
-                    </span>
-
-                    <span>
-                      Competitors {competitorAverage.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+            <p className="mt-2 text-[10px] text-muted-foreground">
+              Based on {term.competitors} competitor
+              {term.competitors === 1 ? '' : 's'}
+            </p>
           </div>
-        )}
-      </section>
+        );
+      })}
+    </div>
+  )}
+</section>
     </div>
   );
 }
