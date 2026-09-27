@@ -348,7 +348,7 @@
   position: absolute;
   inset: -1px;
   border-radius: inherit;
-  padding: 1.5px;
+  padding: 2.5px;
 
   background: conic-gradient(
     from var(--angle),
@@ -385,7 +385,7 @@
     #4285f4
   );
 
-  filter: blur(4px);
+  filter: blur(2px);
   opacity: 0.3;
 
   animation: cta-border-spin 3s linear infinite;
