@@ -441,3 +441,39 @@ function tokenize(text: string): string[] {
     .filter((word) => word.length >= 3)
     .filter((word) => !STOPWORDS.has(word));
 }
+
+export const analyzeWdfIdfKeyword = async (
+  args: { keyword: string },
+  context: any
+) : Promise<any> => {
+  if (!context.user) {
+    throw new Error('Not authenticated');
+  }
+
+  const organizationId = context.user.activeOrganizationId;
+
+  if (!organizationId) {
+    throw new Error('No active workspace selected');
+  }
+
+  const serpResults = await searchDuckDuckGo(args.keyword);
+
+  const filteredResults = filterSERPResults(
+    serpResults
+  );
+
+  const competitorPages = await crawlCompetitorPages(
+    filteredResults,
+    context
+  );
+
+  const wdfIdf = analyzeWdfIdf(
+    competitorPages
+  );
+
+  return {
+    serpResults: filteredResults,
+    competitorPages,
+    wdfIdf,
+  };
+};

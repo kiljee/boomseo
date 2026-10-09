@@ -86,6 +86,7 @@ function parseDuckDuckGoResults(
 }
 
 
+
 function extractResultUrl(
 	href: string
 ): string | null {
@@ -149,6 +150,6 @@ export function filterSERPResults(
 			url.includes('linkedin.com')
 		);
 	})
-	.slice(0, 10);
+	.slice(0, 15);
 }
 
