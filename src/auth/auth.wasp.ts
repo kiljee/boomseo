@@ -29,8 +29,8 @@ import { onAfterSignup } from "./hooks/onAfterSignup" with { type: "ref" };
 
 const emailAuthMethod: NonNullable<AuthMethods["email"]> = {
   fromField: {
-    name: "Open SaaS App",
-    email: "me@example.com",
+    name: "BoomSEO",//Open SaaS App
+    email: "admin@boostseo.app",
   },
   emailVerification: {
     clientRoute: "EmailVerificationRoute",

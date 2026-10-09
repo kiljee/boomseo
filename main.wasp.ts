@@ -35,11 +35,12 @@ import { contentSpec } from "./src/content/content.wasp";
 import { WorkspaceBlogPostsPage } from "./src/content/WorkspaceBlogPostsPage.tsx" with {type: "ref"};
 import { SEOArticlePage } from "./src/content/SEOArticlePage.tsx" with { type: "ref"}
 import { researchAnalysisSpec } from "./src/seo/services/researchAnalysis.wasp";
+import { WdfIdfPage } from "./src/seo/wdf_idf/WdfIdfPage.tsx" with { type:"ref" };
 
 export default app({
-  name: "OpenSaaS",
+  name: "OpenSaaS",//OpenSaaS
   wasp: { version: "^0.24.0" },
-  title: "My Open SaaS App",
+  title: "BoomSEO - boost your SEO",//My OpenSaaS app
   head,
   auth: authConfig,
   db: {
@@ -120,6 +121,10 @@ export default app({
     route("ViewArticleRoute",
       "/article/:articleId",
       page(SEOArticlePage, {authRequired: true})
+    ),
+    route("WdfidfRoute",
+      "/wdfidf",
+      page(WdfIdfPage, {authRequired: true})
     ),
     researchAnalysisSpec,
     authSpec,
