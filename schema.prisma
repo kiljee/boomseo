@@ -70,6 +70,7 @@ model Organization {
   competitors Competitor[]
   seoPlan     SEOPlan?
   contentResearches ContentResearch[]
+  articleOptimizations ArticleOptimization[]
 }
 
 enum Role {
@@ -336,6 +337,11 @@ model ContentResearch {
 
   status           ContentResearchStatus @default(PENDING)
 
+  targetUrl         String?
+  targetCountry     String  @default("US")
+  targetState       String?
+  device            String  @default("desktop")
+
   serpResults        Json?
   competitorPages    Json?
   wdfIdfAnalysis     Json?
@@ -362,6 +368,36 @@ model ContentResearch {
 enum ContentResearchStatus {
   PENDING
   RUNNING
+  COMPLETED
+  FAILED
+}
+
+model ArticleOptimization {
+  id             String   @id @default(uuid())
+  organizationId String
+
+  status         OptimizationStatus @default(PENDING)
+
+  originalContent  String
+  optimizedContent String?
+
+  targetKeyword  String
+  keywords       Json
+  tone           String?
+  model          String
+
+  wordCount      Int?
+  error          String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+enum OptimizationStatus {
+  PENDING
+  PROCESSING
   COMPLETED
   FAILED
 }
