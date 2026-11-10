@@ -1,40 +1,7 @@
 import { getCachedPage } from './pageCache';
-import { extractCompetitorPage } from './pageCrawler';
-import { runContentResearch } from 'wasp/server/jobs';
-
-import {
-  searchDuckDuckGo,
-  filterSERPResults,
-} from './serpService';
-
-
-export async function crawlCompetitorPages(
-  results: {
-    url: string;
-  }[],
-  context: any
-) {
-  const pages : any[] = [];
-
-  for(const result of results) {
-    try {
-      const page = await getCachedPage(
-        result.url,
-        context
-      )
-
-
-      pages.push(page);
-    } catch(error) {
-      console.warn(
-        `Could not crawl ${result.url}:`,
-        error
-      );
-    }
-  }
-
-  return pages;
-}
+import { extractCompetitorPage, type CompetitorPageData } from './pageCrawler';
+import { searchSERP, filterSERPResults } from './serpService';
+import { analyzeWdfIdf } from '../utils/wdfidf';
 
 export interface ContentResearchResult {
   competitorsAnalyzed: number;
@@ -48,20 +15,67 @@ export interface ContentResearchResult {
   }[];
 }
 
+export async function crawlCompetitorPages(
+  results: {
+    url: string;
+  }[],
+  context: any,
+  batchSize = 4
+): Promise<CompetitorPageData[]> {
+  const pages: CompetitorPageData[] = [];
+
+  for (let i = 0; i < results.length; i += batchSize) {
+    const batch = results.slice(i, i + batchSize);
+    const settled = await Promise.allSettled(
+      batch.map((result) => getCachedPage(result.url, context))
+    );
+
+    for (const outcome of settled) {
+      if (outcome.status === 'fulfilled' && outcome.value) {
+        pages.push(outcome.value);
+      } else if (outcome.status === 'rejected') {
+        console.warn(`Could not crawl page:`, outcome.reason?.message ?? outcome.reason);
+      }
+    }
+  }
+
+  return pages;
+}
+
+// Helper to support both pageCrawler (h1, h2, h3) and database cached pages (headings: { h1, h2, h3 })
+function extractHeadingsFromPage(page: any): {
+  h1: string[];
+  h2: string[];
+  h3: string[];
+} {
+  const headings = page.headings;
+  if (headings) {
+    return {
+      h1: headings.h1 ?? [],
+      h2: headings.h2 ?? [],
+      h3: headings.h3 ?? [],
+    };
+  }
+
+  return {
+    h1: page.h1 ?? [],
+    h2: page.h2 ?? [],
+    h3: page.h3 ?? [],
+  };
+}
+
 export function analyzeCompetitorContent(
-  pages: any[],
+  pages: CompetitorPageData[],
   targetKeyword: string
 ): ContentResearchResult {
-  const headings = pages.flatMap(
-    (page) => {
-      const data = page.headings ?? {};
+  const headings = pages.flatMap((page) => {
+    const data = extractHeadingsFromPage(page);
 
-      return [
-        ...(data.h2 ?? []),
-        ...(data.h3 ?? []),
-      ];
-    }
-  );
+    return [
+      ...(data.h2 ?? []),
+      ...(data.h3 ?? []),
+    ];
+  });
 
   const normalized = headings
     .map(normalizeHeading)
@@ -69,7 +83,7 @@ export function analyzeCompetitorContent(
 
   const topicCounts = new Map<string, number>();
 
-  for(const heading of normalized) {
+  for (const heading of normalized) {
     topicCounts.set(
       heading,
       (topicCounts.get(heading) ?? 0) + 1
@@ -79,40 +93,34 @@ export function analyzeCompetitorContent(
   const competitorTopics = [
     ...topicCounts.entries(),
   ]
-  .sort((a,b) => b[1] - a[1])
-  .slice(0, 10)
-  .map(([topic]) => topic);
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([topic]) => topic);
 
   const averageWordCount =
     pages.length === 0
-    ? 0
-    : Math.round(
-      pages.reduce(
-        (sum, page) =>
-          sum + (page.wordCount ?? 0),
-        0
-      ) / pages.length
-    );
+      ? 0
+      : Math.round(
+          pages.reduce(
+            (sum, page) => sum + (page.wordCount ?? 0),
+            0
+          ) / pages.length
+        );
 
   return {
     competitorsAnalyzed: pages.length,
     competitorTopics,
     averageWordCount,
-    recommendedWordCount:
-      Math.max(1000, averageWordCount),
-    recommendedOutline:
-    competitorTopics.map((topic) => ({
+    recommendedWordCount: Math.max(1000, averageWordCount),
+    recommendedOutline: competitorTopics.map((topic) => ({
       level: 'h2',
       title: topic,
-      rationale:
-        'Topic appears in competitor content.',
+      rationale: `Topic appears in competitor content for "${targetKeyword}".`,
     })),
   };
 }
 
-function normalizeHeading(
-  heading: string
-): string {
+function normalizeHeading(heading: string): string {
   return heading
     .toLowerCase()
     .replace(/[^\p{L}\p{N}\s]/gu, '')
@@ -120,14 +128,13 @@ function normalizeHeading(
     .trim();
 }
 
-
 export interface ContentGapAnalysisResult {
   competitorsAnalyzed: number;
   contentGaps: string[];
   recommendedOutline: {
     level: 'h2' | 'h3';
     title: string;
-    rationale: string
+    rationale: string;
   }[];
   targetWordCount: number;
 }
@@ -136,22 +143,14 @@ export async function analyzeContentGaps(
   targetKeyword: string,
   competitorUrls: string[]
 ): Promise<ContentGapAnalysisResult> {
-  const pages: any[] = [];
+  const pages: CompetitorPageData[] = [];
 
-  for(const url of competitorUrls.slice(0, 5)) {
+  for (const url of competitorUrls.slice(0, 5)) {
     try {
       const pageData = await extractCompetitorPage(url);
-      pages.push({
-        url: pageData.url,
-        wordCount: pageData.wordCount,
-        headings: {
-          h1: pageData.h1,
-          h2: pageData.h2,
-          h3: pageData.h3,
-        },
-      });
-    } catch(err) {
-      console.warn(`Could not analyze content gap for ${url}:`,err);
+      pages.push(pageData);
+    } catch (err) {
+      console.warn(`Could not analyze content gap for ${url}:`, err);
     }
   }
 
@@ -165,91 +164,25 @@ export async function analyzeContentGaps(
   };
 }
 
-export const startContentResearch = async (
-  { keyword }: { keyword: string },
-  context: any
-) => {
-  if (!context.user) {
-    throw new Error('Not authenticated');
-  }
-
-  const organizationId =
-    context.user.activeOrganizationId;
-
-  if (!organizationId) {
-    throw new Error('No active organization');
-  }
-
-  const normalizedKeyword = keyword.trim();
-
-  if (!normalizedKeyword) {
-    throw new Error('Keyword is required');
-  }
-
-  // Find existing keyword
-  let seoKeyword =
-    await context.entities.SEOKeyword.findFirst({
-      where: {
-        keyword: normalizedKeyword,
-        organizationId,
-      },
-    });
-
-  // Create it if it doesn't exist
-  if (!seoKeyword) {
-    seoKeyword =
-      await context.entities.SEOKeyword.create({
-        data: {
-          organizationId,
-          keyword: normalizedKeyword,
-          selected: false,
-        },
-      });
-  }
-
-  // Create research
-  const research =
-    await context.entities.ContentResearch.create({
-      data: {
-        organization: {
-          connect: {
-            id: organizationId,
-          },
-        },
-
-        keyword: {
-          connect: {
-            id: seoKeyword.id,
-          },
-        },
-
-        status: 'PENDING',
-      },
-    });
-
-  // Start background job
-  await runContentResearch.submit({
-    researchId: research.id,
-  });
-
-  return research;
-};
-
-
-
-export async function performContentResearch(
+export async function executeContentResearch(
   researchId: string,
   context: any
 ) {
-  const research = await context.entities.ContentResearch.findUnique({
-    where: { id: researchId },
-    include: {
-      keyword: true,
-    },
-  });
+  const research =
+    await context.entities.ContentResearch.findUnique({
+      where: { id: researchId },
+      include: {
+        keyword: true,
+      },
+    });
 
   if (!research) {
     throw new Error('Content research not found');
+  }
+
+  const keyword = research.keyword?.keyword;
+  if (!keyword) {
+    throw new Error('Keyword not found for content research');
   }
 
   await context.entities.ContentResearch.update({
@@ -260,67 +193,36 @@ export async function performContentResearch(
   });
 
   try {
-    const keyword = research.keyword.keyword;
-
-    //SERP
-    const serpResults = await searchDuckDuckGo(keyword, 15);
-
-    console.log("SERP results: "+serpResults);
-
-    //Filter to relevant competitors
-    const competitors =
-      filterSERPResults(
-        serpResults,
-        undefined
-      );
-    console.log("Competitors: "+competitors);
-
-    const competitorPages = 
-      await crawlCompetitorPages(
-        competitors,
-        context
-      );
-    console.log("CompetitorPages: "+JSON.stringify(competitorPages, null, 2));
-
-    const analysis =
-      analyzeCompetitorContent(
-        competitorPages,
-        keyword
-      );
-    console.log("AnalyzeCompetitorContent: "+JSON.stringify(analysis, null, 2));
-
-
+    const serpResults = await searchSERP(keyword, 15);
+    const competitors = filterSERPResults(serpResults);
+    const competitorPages = await crawlCompetitorPages(competitors, context);
+    const analysis = analyzeCompetitorContent(competitorPages, keyword);
     const wdfIdfAnalysisOutput = analyzeWdfIdf(competitorPages);
-    console.log("WDF-IDF Analysis "+JSON.stringify(wdfIdfAnalysisOutput, null, 2));
 
-    // 5. Save research
     await context.entities.ContentResearch.update({
       where: { id: researchId },
       data: {
         status: 'COMPLETED',
-
         serpResults,
-
         competitorPages: competitorPages.map((page) => ({
           url: page.url,
           title: page.title,
           metaDescription: page.metaDescription,
-          headings: page.headings,
+          headings: extractHeadingsFromPage(page),
           text: page.text,
           wordCount: page.wordCount,
         })),
-
         contentGaps: analysis.competitorTopics,
-
         recommendedOutline: analysis.recommendedOutline,
-
         wdfIdfAnalysis: wdfIdfAnalysisOutput ?? null,
       },
     });
 
-
-
-    return analysis;
+    return {
+      success: true,
+      researchId,
+      ...analysis,
+    };
   } catch (error) {
     await context.entities.ContentResearch.update({
       where: { id: researchId },
@@ -333,147 +235,12 @@ export async function performContentResearch(
   }
 }
 
-interface WdfIdfTerm {
-  term: string;
-  idf: number;
-  averageScore: number;
-  minScore: number;
-  maxScore: number;
-  competitors: number;
-}
-
-export function analyzeWdfIdf(
-  pages: { text: string }[]
-): WdfIdfTerm[] {
-  const documents = pages.map((page) =>
-    tokenize(page.text)
-  );
-
-  const N = documents.length;
-
-  if (N === 0) {
-    return [];
-  }
-
-  // How many documents contain each term?
-  const documentFrequency = new Map<string, number>();
-
-  for (const document of documents) {
-    const uniqueTerms = new Set(document);
-
-    for (const term of uniqueTerms) {
-      documentFrequency.set(
-        term,
-        (documentFrequency.get(term) ?? 0) + 1
-      );
-    }
-  }
-
-  const scores = new Map<
-    string,
-    {
-      idf: number;
-      scores: number[];
-    }
-  >();
-
-  for (const document of documents) {
-    const counts = new Map<string, number>();
-
-    for (const term of document) {
-      counts.set(term, (counts.get(term) ?? 0) + 1);
-    }
-
-    for (const [term, count] of counts) {
-      const wdf = count / document.length;
-
-      const df = documentFrequency.get(term) ?? 0;
-
-      const idf = Math.log(N / (1 + df));
-
-      const score = wdf * idf;
-
-      if (!scores.has(term)) {
-        scores.set(term, {
-          idf,
-          scores: [],
-        });
-      }
-
-      scores.get(term)!.scores.push(score);
-    }
-  }
-
-  return [...scores.entries()]
-    .map(([term, data]) => ({
-      term,
-      idf: data.idf,
-      averageScore:
-        data.scores.reduce(
-          (sum, value) => sum + value,
-          0
-        ) / data.scores.length,
-      minScore: Math.min(...data.scores),
-      maxScore: Math.max(...data.scores),
-      competitors: data.scores.length,
-    }))
-    .sort((a, b) => b.averageScore - a.averageScore)
-    .slice(0, 100);
-}
-
-const STOPWORDS = new Set([
-  'i', 'ili', 'a', 'ali', 'da', 'je', 'su', 'se', 'sa', 'za', 'od',
-  'do', 'u', 'na', 'o', 'po', 'iz', 'kod', 'ka', 'uz', 'bez',
-  'kao', 'što', 'koji', 'koja', 'koje', 'ko', 'to', 'taj', 'ta',
-  'te', 'ovaj', 'ova', 'ovo', 'biti', 'bio', 'bila', 'bilo',
-  'ima', 'imao', 'imati', 'može', 'mogu', 'možeš',
-
-  'the', 'and', 'or', 'but', 'for', 'with', 'from', 'that', 'this',
-  'these', 'those', 'are', 'was', 'were', 'is', 'be', 'to', 'of',
-  'in', 'on', 'at', 'by', 'as', 'an', 'a', 'it', 'its', 'can',
-]);
-
-function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-    .split(/\s+/)
-    .filter((word) => word.length >= 3)
-    .filter((word) => !STOPWORDS.has(word));
-}
-
-export const analyzeWdfIdfKeyword = async (
-  args: { keyword: string },
+/**
+ * Backward compatibility export for external jobs like generateSEOArticleJob.ts
+ */
+export async function performContentResearch(
+  researchId: string,
   context: any
-) : Promise<any> => {
-  if (!context.user) {
-    throw new Error('Not authenticated');
-  }
-
-  const organizationId = context.user.activeOrganizationId;
-
-  if (!organizationId) {
-    throw new Error('No active workspace selected');
-  }
-
-  const serpResults = await searchDuckDuckGo(args.keyword);
-
-  const filteredResults = filterSERPResults(
-    serpResults
-  );
-
-  const competitorPages = await crawlCompetitorPages(
-    filteredResults,
-    context
-  );
-
-  const wdfIdf = analyzeWdfIdf(
-    competitorPages
-  );
-
-  return {
-    serpResults: filteredResults,
-    competitorPages,
-    wdfIdf,
-  };
-};
+) {
+  return executeContentResearch(researchId, context);
+}

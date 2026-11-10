@@ -1,37 +1,23 @@
-/*import { searchDuckDuckGo } from './searchEngineService';
-import { filterSERPResults } from './searchEngineService';
-import { crawlCompetitorPages } from './competitorResearch';
-import { analyzeCompetitorContent } from './competitorResearch';
+import { filterSERPResults, searchDuckDuckGo } from './serpService';
 
-export async function testCompetitorResearch() {
-  const keyword = 'best seo tools';
+const keyword = process.argv[2]?.trim() || 'best seo tools';
+const limit = Number(process.argv[3]) || 10;
 
-  console.log(`Searching SERP for: "${keyword}"`);
+async function printSerpResults() {
+	console.log(`Searching SERP for: "${keyword}" (limit ${limit})\n`);
 
-  const serpResults = await searchDuckDuckGo(keyword, 10);
+	const serpResults = await searchDuckDuckGo(keyword, limit);
 
-  console.log('SERP results:', serpResults);
+	console.log('Raw SERP results:');
+	console.log(JSON.stringify(serpResults, null, 2));
 
-  const competitors = filterSERPResults(
-    serpResults
-  ).slice(0, 5);
+	const filtered = filterSERPResults(serpResults);
 
-  console.log('Competitors:', competitors);
-
-  const pages = await crawlCompetitorPages(
-    competitors
-  );
-
-  console.log('Crawled pages:', pages);
-
-  const analysis = analyzeCompetitorContent(
-    pages,
-    keyword
-  );
-
-  console.log('Analysis:', analysis);
-
-  return analysis;
+	console.log('\nFiltered (competitors):');
+	console.log(JSON.stringify(filtered, null, 2));
 }
 
-await testCompetitorResearch();*/
+printSerpResults().catch((error) => {
+	console.error(error);
+	process.exit(1);
+});

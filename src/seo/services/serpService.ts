@@ -1,155 +1,210 @@
-import * as cheerio from 'cheerio'
+import {
+  DuckDuckGoProvider,
+  parseDuckDuckGoLiteResults,
+  parseDuckDuckGoResults,
+} from './duckduckgoProvider';
+import { SearXNGProvider } from './searxngProvider';
+import { OpenSERPProvider } from './openserpProvider';
 
 export interface SERPResult {
-	position: number;
-	title: string;
-	url: string;
-	snippet: string;
+  position: number;
+  title: string;
+  url: string;
+  snippet: string;
 }
 
-const DDG_URL = 'https://html.duckduckgo.com/html/';
+export interface SERPOptions {
+  country?: string;
+  lang?: string;
+  device?: 'desktop' | 'mobile';
+}
 
-export async function searchDuckDuckGo(
-	query: string,
-	limit = 10
+export interface SERPProvider {
+  readonly name: string;
+  search(query: string, limit?: number, options?: SERPOptions): Promise<SERPResult[]>;
+}
+
+export type SERPProviderName = 'openserp' | 'duckduckgo' | 'searxng';
+
+export {
+  DuckDuckGoProvider,
+  parseDuckDuckGoLiteResults,
+  parseDuckDuckGoResults,
+  searchDuckDuckGo,
+} from './duckduckgoProvider';
+
+export { SearXNGProvider, searchSearXNG } from './searxngProvider';
+export { OpenSERPProvider, searchOpenSERP } from './openserpProvider';
+
+const LIBRECRAWL_BASE_URL = (
+  process.env.LIBRECRAWL_URL || 'http://localhost:5000'
+).replace(/\/+$/, '');
+
+export function createSERPProvider(name: SERPProviderName): SERPProvider {
+  switch (name) {
+    case 'openserp':
+      return new OpenSERPProvider();
+    case 'duckduckgo':
+      return new DuckDuckGoProvider();
+    case 'searxng':
+      return new SearXNGProvider();
+    default: {
+      const _never: never = name;
+      throw new Error(`Unknown SERP provider: ${String(_never)}`);
+    }
+  }
+}
+
+/**
+ * Ultimate Fallback: Opens search inside LibreCrawl's Playwright instance
+ * when raw HTTP scrapers are blocked by IP bot limits.
+ */
+async function searchWithLibreCrawl(
+  query: string,
+  limit = 10
 ): Promise<SERPResult[]> {
-	const response = await fetch(DDG_URL, {
-		method: 'POST',
-		headers: {
-			'Content-Type':
-				'application/x-www-form-urlencoded',
-			'User-Agent':
-				'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebkit/537.36 Chrome/140 Safari/537.36',
-				Accept: 'text/html',
-				Referer: 'https://html.duckduckgo.com/',
-		},
-		body: new URLSearchParams({
-			q: query
-		}),
-	});
+  const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
 
-	if(!response.ok) {
-		throw new Error(`DuckDuckGo request failed: ${response.status}`);
-	}
+  console.log(`[searchSERP] Delegating blocked search to LibreCrawl Playwright for: "${query}"...`);
 
-	const html = await response.text();
+  const response = await fetch(`${LIBRECRAWL_BASE_URL}/api/render`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: searchUrl }),
+    signal: AbortSignal.timeout(25_000),
+  });
 
-	return parseDuckDuckGoResults(html)
-		.slice(0, limit);
+  if (!response.ok) {
+    throw new Error(`LibreCrawl returned HTTP ${response.status}`);
+  }
+
+  const data = (await response.json()) as {
+    success?: boolean;
+    html?: string;
+    error?: string;
+  };
+
+  if (!data.html) {
+    throw new Error(data.error || 'LibreCrawl did not return HTML content.');
+  }
+
+  let results = parseDuckDuckGoResults(data.html);
+
+  if (results.length === 0) {
+    results = parseDuckDuckGoLiteResults(data.html, limit);
+  }
+
+  if (results.length === 0) {
+    throw new Error('LibreCrawl rendered DuckDuckGo, but no organic results were found.');
+  }
+
+  return results.slice(0, limit);
 }
 
-function parseDuckDuckGoResults(
-	html: string
-): SERPResult[] {
-	const $ = cheerio.load(html);
-	const results: SERPResult[] = [];
+/**
+ * Multi-Tier Search Pipeline:
+ * 1. OpenSERP (Local Go binary/container - fast, clean JSON, geo & device support)
+ * 2. DuckDuckGo / SearXNG (HTTP scrapers)
+ * 3. LibreCrawl Playwright (Ultimate headless fallback)
+ */
+export async function searchSERP(
+  query: string,
+  limit = 10,
+  preferredProvider: SERPProviderName = 'openserp',
+  options?: SERPOptions
+): Promise<SERPResult[]> {
+  // Ordered provider fallback chain starting with user's preferred provider
+  const candidateProviders: SERPProviderName[] = [
+    preferredProvider,
+    ...(['openserp', 'duckduckgo', 'searxng'] as SERPProviderName[]).filter(
+      (p) => p !== preferredProvider
+    ),
+  ];
 
-	$('.result').each((index, element) => {
-		const result = $(element);
+  // Try each API/HTTP provider in sequence
+  for (let i = 0; i < candidateProviders.length; i++) {
+    const providerName = candidateProviders[i];
+    const tierNumber = i + 1;
 
-		const link = result
-			.find('.result__a')
-			.first();
+    try {
+      console.log(`[searchSERP] Trying Tier ${tierNumber} (${providerName})...`);
+      const provider = createSERPProvider(providerName);
+      const results = await provider.search(query, limit, options);
 
-		const title = link
-			.text()
-			.trim();
+      if (results && results.length > 0) {
+        return results;
+      }
+    } catch (err: any) {
+      console.warn(`[searchSERP] Tier ${tierNumber} (${providerName}) failed: ${err.message}`);
+    }
+  }
 
-		const href = link.attr('href');
-
-		if(!title || !href) {
-			return;
-		}
-
-		const snippet = result
-			.find('.result__snippet')
-			.first()
-			.text()
-			.trim();
-
-		const url = extractResultUrl(href);
-
-		if(!url) {
-			return;
-		}
-
-		results.push({
-			position: index + 1,
-			title,
-			url,
-			snippet,
-		});
-
-	})
-
-	return results;
+  // Final Tier: Fallback to LibreCrawl Playwright
+  try {
+    console.log(`[searchSERP] All API tiers failed. Activating Final Tier: LibreCrawl Playwright...`);
+    return await searchWithLibreCrawl(query, limit);
+  } catch (err: any) {
+    console.error(`[searchSERP] All search tiers failed:`, err.message);
+    throw new Error(`Could not fetch search results: ${err.message}`);
+  }
 }
 
-
-
-function extractResultUrl(
-	href: string
-): string | null {
-	try {
-		const absoluteUrl = href.startsWith('//')
-		? `https:${href}`
-		: href;
-
-		const url = new URL(absoluteUrl);
-
-		const redirectedUrl = 
-		url.searchParams.get('uddg');
-
-		return redirectedUrl
-			? decodeURIComponent(redirectedUrl)
-			: absoluteUrl;
-		} catch {
-			return null;
-		}
-}
+const EXCLUDED_HOSTS = [
+  'youtube.com',
+  'youtu.be',
+  'reddit.com',
+  'facebook.com',
+  'fb.com',
+  'instagram.com',
+  'linkedin.com',
+  'twitter.com',
+  'x.com',
+  'pinterest.com',
+  'tiktok.com',
+];
 
 export function filterSERPResults(
-	results: SERPResult[],
-	ownDomain?: string,
+  results: SERPResult[],
+  ownDomain?: string
 ): SERPResult[] {
-	return results
-	.filter((result) => {
-		try {
-			const url = new URL(result.url);
+  return results.filter((result) => {
+    try {
+      const parsedUrl = new URL(result.url);
 
-			if(!['http:', 'https:'].includes(
-				url.protocol
-			)) {
-				return false;
-			}
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        return false;
+      }
 
-			if(ownDomain &&
-				url.hostname
-				.replace(/^www\./, '')
-				.endsWith(
-					ownDomain
-					.replace(/^www\./,'')
-				)
-			) {
-				return false;
-			}
+      if (ownDomain && hostnameMatchesDomain(parsedUrl.hostname, ownDomain)) {
+        return false;
+      }
 
-			return true;
-		} catch {
-			return false;
-		}
-	})
-	.filter((result) => {
-		const url = result.url.toLowerCase();
+      if (isExcludedHost(parsedUrl.hostname)) {
+        return false;
+      }
 
-		return !(
-			url.includes('youtube.com') ||
-			url.includes('reddit.com') ||
-			url.includes('facebook.com') ||
-			url.includes('instagram.com') ||
-			url.includes('linkedin.com')
-		);
-	})
-	.slice(0, 15);
+      return true;
+    } catch {
+      return false;
+    }
+  });
 }
 
+function hostnameMatchesDomain(hostname: string, domain: string): boolean {
+  const host = normalizeHostname(hostname);
+  const root = normalizeHostname(domain);
+
+  if (!host || !root) return false;
+  return host === root || host.endsWith(`.${root}`);
+}
+
+function isExcludedHost(hostname: string): boolean {
+  const host = normalizeHostname(hostname);
+  return EXCLUDED_HOSTS.some(
+    (blocked) => host === blocked || host.endsWith(`.${blocked}`)
+  );
+}
+
+function normalizeHostname(value: string): string {
+  return value.trim().toLowerCase().replace(/^www\./, '');
+}
