@@ -445,3 +445,61 @@ export const deleteInvitation = async (
     return { success: true };
 
 }
+
+export const deleteOrganization = async (
+  args: { orgId: string },
+  context: any
+) => {
+  if (!context.user) {
+    throw new HttpError(401, "Not authenticated");
+  }
+
+  const membership =
+    await context.entities.Membership.findUnique({
+      where: {
+        userId_orgId: {
+          userId: context.user.id,
+          orgId: args.orgId,
+        },
+      },
+    });
+
+  if (!membership) {
+    throw new HttpError(403, "You are not a member of this workspace");
+  }
+
+  if (membership.role !== "OWNER") {
+    throw new HttpError(403, "Only the workspace owner can delete it");
+  }
+
+  const organization =
+    await context.entities.Organization.findUnique({
+      where: { id: args.orgId },
+    });
+
+  if (!organization) {
+    throw new HttpError(404, "Workspace not found");
+  }
+
+  // Clear active workspace references for all users.
+  await context.entities.User.updateMany({
+    where: { activeOrganizationId: args.orgId },
+    data: { activeOrganizationId: null },
+  });
+
+  // Remove invitations and memberships.
+  await context.entities.OrganizationInvitation.deleteMany({
+    where: { activeOrganizationId: args.orgId },
+  });
+
+  await context.entities.Membership.deleteMany({
+    where: { orgId: args.orgId },
+  });
+
+  // Delete the workspace and its related data.
+  await context.entities.Organization.delete({
+    where: { id: args.orgId },
+  });
+
+  return { success: true };
+};

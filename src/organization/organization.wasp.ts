@@ -19,7 +19,8 @@ import {
     acceptInvitation,
     cancelInvitation,
     leaveOrganization,
-    deleteInvitation
+    deleteInvitation,
+    deleteOrganization
 } from "./actions" with { type: "ref" }
 
 export const organizationSpec : Spec = [
@@ -85,6 +86,14 @@ export const organizationSpec : Spec = [
 
     action(deleteInvitation, {
         entities: ["User", "OrganizationInvitation"]
-    })
+    }),
+    action(deleteOrganization, {
+      entities: [
+        "User",
+        "Organization",
+        "Membership",
+        "OrganizationInvitation",
+    ],
+}),
 
 ];
