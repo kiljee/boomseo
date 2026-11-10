@@ -26,5 +26,7 @@ export const serverEnvValidationSchema = defineEnvValidationSchema(
     ...fileUploadEnvSchema.shape,
     ...plausibleEnvSchema.shape,
     ...googleAnalyticsEnvSchema.shape,
+    LIBRECRAWL_URL: z.string(),
+    OPENSERP_URL: z.string(),
   }),
 );
