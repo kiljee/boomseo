@@ -15,4 +15,5 @@ Always fetch and verify your knowledge against the Open SaaS documentation befor
 
 Remember, this template is built on the Wasp framework. If, at any time, the Open SaaS docs fail to provide enough information about a certain feature, make sure to check out the Wasp docs [LLMs.txt index](https://wasp.sh/llms.txt).
 
-When writing code, write it to the terminal and explain it, don't automatically write to files
+When writing code, write it to the terminal and explain it, DO NOT automatically write to files
+Explain the code before changing it and explain why it's necessary and how it works.
