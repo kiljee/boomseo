@@ -1,6 +1,6 @@
 import { action, query, job, type Spec } from "@wasp.sh/spec";
 import { getWorkspaceArticles, generateSEOArticle, deleteSEOArticle, getSEOArticle, updateSEOArticle, getRandomGSCKeyword } from "./operations" with {type: "ref"};
-import { generateSEOArticleJob } from "./generateSEOArticleJob" with { type: "ref" };
+import { generateSEOArticleJob } from "./jobs/generateSEOArticleJob" with { type: "ref" };
 
 
 export const contentSpec: Spec = [

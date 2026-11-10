@@ -9,7 +9,7 @@ import {
   getRandomGSCKeyword
 } from "wasp/client/operations";
 
-import { exportArticleAsMarkdown, exportArticleAsHTML, exportArticleAsJSON } from "./exportUtils";
+import { exportArticleAsMarkdown, exportArticleAsHTML, exportArticleAsJSON } from "./utils/exportUtils";
 
 import {
   FileText,
